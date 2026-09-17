@@ -12,7 +12,7 @@ export default function Home() {
         </div>
       </header>
       <div className="rule" />
-      <nav aria-label="Pages"><a href="/personal/">personal</a></nav>
+      <nav aria-label="Pages"><a href="/personal/">Personal</a></nav>
     </main>
   );
 }

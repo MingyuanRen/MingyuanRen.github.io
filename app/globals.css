@@ -2,10 +2,10 @@
 
 :root {
   color-scheme: light;
-  --background: #f8f8f6;
-  --text: #171715;
-  --muted: #656560;
-  --line: #d9d9d4;
+  --background: #fafbf9;
+  --text: #202621;
+  --muted: #69716b;
+  --line: #d8ddd7;
 }
 
 * { box-sizing: border-box; }
@@ -13,26 +13,32 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--text);
-  font-family: var(--font-geist-sans), Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.45;
+  font-family: Arial, Helvetica, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+  letter-spacing: -.02em;
   -webkit-font-smoothing: antialiased;
 }
 a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid #087748; outline-offset: 5px; }
 ::selection { background: #397251; color: var(--background); }
-.page { width: min(620px, calc(100% - 40px)); margin: 0 auto; padding: 88px 0 110px; }
+.page { width: min(620px, calc(100% - 64px)); margin: 0 auto; padding: 88px 0 56px; }
 .profile-header { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 32px; }
 .avatar { width: 80px; height: 80px; display: block; object-fit: cover; }
 .identity h1 { margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.045em; font-weight: 520; }
 .identity > p { margin: 7px 0 9px; color: var(--muted); }
 nav { display: flex; flex-wrap: wrap; gap: 16px; }
-nav a { color: var(--muted); }
-nav a:hover { color: var(--text); }
-.rule { height: 1px; margin: 32px 0 29px; background: var(--line); }
+nav a { color: var(--text); }
+nav a:hover { color: #087748; }
+.rule { height: 1px; margin: 32px 0 24px; background: var(--line); }
+.back-link { color: var(--muted); font-size: 14px; letter-spacing: normal; }
+.section-title { margin: 32px 0 24px; font-size: 17px; line-height: 1.5; font-weight: 400; }
+.subpages { flex-direction: column; align-items: flex-start; gap: 20px; }
+:lang(zh-CN) { letter-spacing: normal; }
 
 @media (max-width: 560px) {
-  .page { width: min(100% - 32px, 620px); padding: 48px 0 72px; }
+  .page { width: calc(100% - 48px); padding: 32px 0 56px; }
   .profile-header { grid-template-columns: 64px 1fr; gap: 20px; }
   .avatar { width: 64px; height: 64px; }
   .identity h1 { font-size: 27px; }
