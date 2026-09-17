@@ -13,6 +13,7 @@ export default function Home() {
       </header>
       <div className="rule" />
       <nav aria-label="Pages"><a href="/personal/">Personal</a></nav>
+      <p className="section-description" lang="zh-CN">一些对于电影，文学非常个人化的锐评</p>
     </main>
   );
 }

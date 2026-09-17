@@ -13,6 +13,7 @@ test("renders the empty template without fabricated content or placeholder links
   assert.match(html, /<html[^>]*lang="en"/);
   assert.match(html, /href="\/personal\/?"/);
   assert.match(html, />Personal<\/a>/);
+  assert.match(html, /一些对于电影，文学非常个人化的锐评/);
   assert.match(html, /src="\/avatar.jpg"/);
   assert.match(html, /href="\/favicon.jpg"/);
   assert.doesNotMatch(html, />\s*(LEARNING|CULTURE|NOW|TECH)\s*</);
@@ -32,6 +33,7 @@ test("personal page links to both empty categories", async () => {
   const html = await response.text();
   assert.match(html, /href="\/"/);
   assert.match(html, /href="\/personal\/essays\/">随笔/);
+  assert.match(html, /一些对于电影，文学非常个人化的锐评/);
   assert.match(html, /href="\/personal\/rankings\/">从夯到拉/);
   assert.doesNotMatch(html, /<article\b|LEARNING|CULTURE/);
 });

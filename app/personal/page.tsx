@@ -6,6 +6,7 @@ export default function Personal() {
     <main className="page">
       <a className="back-link" href="/">← Home</a>
       <h1 className="section-title">Personal</h1>
+      <p className="section-description" lang="zh-CN">一些对于电影，文学非常个人化的锐评</p>
       <nav className="subpages" aria-label="Personal categories" lang="zh-CN">
         <a href="/personal/essays/">随笔</a>
         <a href="/personal/rankings/">从夯到拉</a>
