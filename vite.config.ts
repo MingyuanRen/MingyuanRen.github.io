@@ -35,7 +35,7 @@ const localBindingConfig = {
 
 export default defineConfig(async () => {
   if (process.env.GITHUB_PAGES === "true") {
-    return { plugins: [vinext()], publicDir: false };
+    return { plugins: [vinext()], publicDir: "site-public" };
   }
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
@@ -47,6 +47,7 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    publicDir: "site-public",
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

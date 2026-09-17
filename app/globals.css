@@ -1,28 +1,14 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
   --background: #f8f8f6;
   --text: #171715;
   --muted: #656560;
-  --faint: #8a8a84;
   --line: #d9d9d4;
-  --accent: #397251;
-  --avatar: #e3e5df;
-}
-
-:root[data-theme="dark"] {
-  --background: #181916;
-  --text: #e9e9e4;
-  --muted: #aaa9a2;
-  --faint: #7f8079;
-  --line: #383934;
-  --accent: #83b696;
-  --avatar: #30322d;
 }
 
 * { box-sizing: border-box; }
-html { color-scheme: light; }
-html[data-theme="dark"] { color-scheme: dark; }
 body {
   margin: 0;
   background: var(--background);
@@ -31,53 +17,19 @@ body {
   font-size: 14px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
-  transition: background-color .2s ease, color .2s ease;
 }
 a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: underline; text-underline-offset: 3px; }
-button { font: inherit; }
-::selection { background: var(--accent); color: var(--background); }
-
+::selection { background: #397251; color: var(--background); }
 .page { width: min(620px, calc(100% - 40px)); margin: 0 auto; padding: 88px 0 110px; }
 .profile-header { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 32px; }
-.avatar {
-  width: 80px;
-  height: 80px;
-  display: grid;
-  place-items: center;
-  background: var(--avatar);
-  color: var(--faint);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 12px;
-  letter-spacing: .08em;
-}
+.avatar { width: 80px; height: 80px; display: block; object-fit: cover; }
 .identity h1 { margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.045em; font-weight: 520; }
 .identity > p { margin: 7px 0 9px; color: var(--muted); }
 nav { display: flex; flex-wrap: wrap; gap: 16px; }
-nav a, nav button { color: var(--muted); font-size: 12px; }
-nav button { appearance: none; border: 0; border-bottom: 1px solid var(--line); padding: 0; background: transparent; cursor: pointer; }
-nav a:hover, nav button:hover { color: var(--text); }
-
+nav a { color: var(--muted); }
+nav a:hover { color: var(--text); }
 .rule { height: 1px; margin: 32px 0 29px; background: var(--line); }
-.row { display: grid; grid-template-columns: 84px 1fr; column-gap: 28px; margin-bottom: 32px; scroll-margin-top: 30px; }
-.row h2 {
-  margin: 2px 0 0;
-  color: var(--faint);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 10px;
-  line-height: 1.4;
-  letter-spacing: .12em;
-  font-weight: 500;
-}
-.row-content { min-width: 0; min-height: 30px; }
-.avatar { object-fit: cover; }
-.row article + article { margin-top: 25px; }
-.row article h3, .row article > a { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 450; letter-spacing: -.015em; }
-.row article > a span { color: var(--faint); font-size: 12px; }
-.row article p { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
-.minor-link { display: inline-block; margin-top: 18px; color: var(--accent); font-size: 12px; }
-.contact-row { margin-top: 42px; padding-top: 28px; border-top: 1px solid var(--line); }
-.contact-row article > a { color: var(--accent); }
 
 @media (max-width: 560px) {
   .page { width: min(100% - 32px, 620px); padding: 48px 0 72px; }
@@ -85,17 +37,5 @@ nav a:hover, nav button:hover { color: var(--text); }
   .avatar { width: 64px; height: 64px; }
   .identity h1 { font-size: 27px; }
   .identity > p { font-size: 13px; }
-  nav { gap: 11px; }
   .rule { margin-top: 26px; }
-  .row { grid-template-columns: 68px 1fr; gap: 18px; }
-}
-
-@media (max-width: 390px) {
-  .row { grid-template-columns: 1fr; row-gap: 10px; }
-  .row h2 { margin-bottom: 2px; }
-  .contact-row { margin-top: 35px; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition-duration: .01ms !important; }
 }

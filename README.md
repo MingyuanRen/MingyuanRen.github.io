@@ -9,7 +9,7 @@ npm ci
 npm run dev
 ```
 
-Edit `app/content.ts` to add your name, photo, links, and entries. Empty fields stay hidden. The page retains the NOW, LEARNING, TECH, and CULTURE section labels; change or remove them in the same file.
+Edit `app/content.ts` to add your name or bio. Empty fields stay hidden. The homepage links to an empty `/personal/` page in `app/personal/page.tsx`. The site uses a fixed light appearance.
 
 Layout: `app/page.tsx`. Styles: `app/globals.css`.
 
@@ -23,4 +23,4 @@ This builds the site and checks the server-rendered empty template.
 
 The public repository `MingyuanRen/MingyuanRen.github.io` deploys to https://mingyuanren.github.io/ through GitHub Actions whenever `main` changes.
 
-`npm run build:pages` creates a static export in `dist/client/`. The normal local development command remains `npm run dev`. Old unused public artwork is excluded from this export; enable `publicDir` in `vite.config.ts` when adding your own assets.
+`npm run build:pages` creates a static export in `dist/client/`. The normal local development command remains `npm run dev`. Assets live in `site-public/`: the GitHub profile avatar and the favicon from the requested Instagram profile. Old unused artwork in `public/` is excluded.
