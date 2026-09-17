@@ -1,12 +1,21 @@
-import { copyFile, mkdir, readFile, access } from "node:fs/promises";
+import { copyFile, mkdir, readFile, access, readdir } from "node:fs/promises";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 
 // vinext's trailingSlash export currently redirects before prerendering nested
 // routes. Export without it, then provide GitHub Pages directory-style URLs.
-for (const route of ["tech", "personal", "personal/essays", "personal/rankings"]) {
-  await mkdir(`dist/client/${route}`, { recursive: true });
-  await copyFile(`dist/client/${route}.html`, `dist/client/${route}/index.html`);
+async function directoryUrls(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) await directoryUrls(path);
+    else if (entry.name.endsWith(".html") && !["index.html", "404.html"].includes(entry.name)) {
+      const target = path.slice(0, -5);
+      await mkdir(target, { recursive: true });
+      await copyFile(path, join(target, "index.html"));
+    }
+  }
 }
+await directoryUrls("dist/client");
 const home = await readFile("dist/client/index.html", "utf8");
 const personal = await readFile("dist/client/personal/index.html", "utf8");
 assert.match(home, /href="\/personal\/"/);
@@ -14,3 +23,4 @@ assert.match(personal, /href="\/"/);
 assert.match(personal, /href="\/personal\/essays\/"/);
 assert.match(personal, /href="\/personal\/rankings\/"/);
 await Promise.all(["avatar.jpg", "favicon.jpg"].map(file => access(`dist/client/${file}`)));
+await access("dist/client/admin/index.html");

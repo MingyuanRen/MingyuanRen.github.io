@@ -1,6 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import PostList from "../posts/post-list";
+import type { PostSummary } from "../posts/content";
 
 type Language = "zh" | "en";
 const key = "personal-language";
@@ -31,7 +33,7 @@ const labels = {
   en: { essays: "Essays", rankings: "From Great to Terrible", home: "← Home", back: "← Personal" },
 };
 
-export default function PersonalView({ category }: { category?: "essays" | "rankings" }) {
+export default function PersonalView({ category, posts = [] }: { category?: "essays" | "rankings"; posts?: PostSummary[] }) {
   const language = useSyncExternalStore(subscribe, readLanguage, () => "zh" as const);
   const copy = labels[language];
   return (
@@ -45,6 +47,7 @@ export default function PersonalView({ category }: { category?: "essays" | "rank
         </div>
       </div>
       <h1 className="section-title">{category ? copy[category] : "Personal"}</h1>
+      {category && <PostList posts={posts} language={language} />}
       {!category && <>
         <p className="section-description" lang="en">Literature, film, and things that live in the imagination.</p>
         <nav className="subpages" aria-label={language === "zh" ? "个人栏目" : "Personal categories"}>

@@ -1,0 +1,56 @@
+.writer-page { width: min(680px, calc(100% - 64px)); letter-spacing: normal; }
+.writer-page button { font: inherit; font-size: 13px; color: inherit; background: transparent; border: 0; padding: 8px 0; cursor: pointer; }
+.writer-page button:hover { color: #087748; }
+.writer-page button:disabled { cursor: default; opacity: .45; }
+.writer-page :is(button, input, textarea, select, summary):focus-visible { outline: 2px solid #087748; outline-offset: 4px; }
+.writer-eyebrow { font-size: 10px; letter-spacing: .1em; color: var(--muted); }
+.writer-header { margin: 40px 0 32px; }
+.writer-header h1 { font-size: 42px; font-weight: 400; letter-spacing: -.05em; line-height: 1.1; margin: 0 0 14px; }
+.writer-header p { color: var(--muted); font-size: 14px; margin: 0; }
+.writer-connect { border-top: 1px solid var(--line); padding-top: 24px; font-size: 15px; line-height: 1.7; }
+.writer-connect p { margin: 0 0 20px; }
+.writer-page .writer-primary { background: var(--text); color: var(--background); padding: 10px 18px; border-radius: 2px; }
+.writer-page .writer-primary:hover { background: #36563f; color: var(--background); }
+.writer-connect .writer-help { margin-top: 20px; }
+.writer-help { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.writer-setup { margin-bottom: 24px; font-size: 13px; }
+.writer-setup summary, .writer-library summary { cursor: pointer; }
+.writer-setup ol { padding-left: 20px; list-style: decimal; }
+.writer-setup li { margin: 12px 0; }
+.writer-setup a { text-decoration: underline; }
+.writer-library { border-block: 1px solid var(--line); padding: 12px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; font-size: 13px; }
+.writer-library summary { padding: 8px 0; }
+.writer-library span { color: var(--muted); margin-left: 4px; }
+.writer-file-list { display: flex; flex-direction: column; align-items: flex-start; padding: 8px 0; gap: 5px; overflow-wrap: anywhere; }
+.writer-file-list button { text-align: left; }
+.writer-form { border: 0; margin: 0; padding: 32px 0 0; min-width: 0; }
+.writer-label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 22px; }
+.writer-label span { opacity: .8; }
+.writer-label input, .writer-label select { display: block; width: 100%; margin-top: 7px; padding: 7px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); font: inherit; font-size: 14px; min-width: 0; }
+.writer-label input:disabled, .writer-label select:disabled { color: var(--muted); }
+.writer-title-label input.writer-title { font-size: 28px; letter-spacing: -.025em; padding-bottom: 12px; }
+.writer-fields { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
+.writer-editor-toolbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); margin: 16px 0; }
+.writer-page .writer-translation { text-decoration: underline; text-underline-offset: 4px; }
+.writer-body-label textarea { display: block; resize: vertical; width: 100%; min-height: 330px; padding: 12px 0; border: 0; background: transparent; font: 15px/1.9 Arial, "PingFang SC", sans-serif; color: var(--text); }
+.writer-body-label textarea::placeholder { color: #7f8781; }
+.writer-preview { min-height: 330px; padding: 12px 0; }
+.writer-preview h2 { font-size: 28px; margin: 0 0 8px; font-weight: 500; }
+.writer-preview .prose { font-size: 16px; }
+.writer-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; border-top: 1px solid var(--line); padding: 24px 0 12px; margin-top: 24px; }
+.writer-privacy { font-size: 12px; color: var(--muted); line-height: 1.7; margin: 12px 0 24px; }
+.writer-connection { display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: 11px; color: var(--muted); }
+.writer-error, .writer-notice { padding: 12px 0; font-size: 13px; line-height: 1.7; }
+.writer-error { color: #9b3526; }
+.writer-notice { color: #28623a; }
+.writer-result { font-size: 13px; text-decoration: underline; text-underline-offset: 4px; }
+.writer-confirm { background: #eff1ed; padding: 20px; margin-top: 20px; font-size: 14px; line-height: 1.7; }
+.writer-confirm p { margin: 0 0 16px; }
+.writer-confirm button + button { margin-left: 20px; }
+.writer-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 560px) {
+  .writer-page { width: calc(100% - 48px); }
+  .writer-header { margin-top: 32px; }
+  .writer-fields { column-gap: 18px; }
+  .writer-actions { gap: 16px; }
+}

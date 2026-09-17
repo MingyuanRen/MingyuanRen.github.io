@@ -1,6 +1,6 @@
 # Personal site
 
-A minimal, empty personal website template. No sample biography, articles, or contact details are included.
+A minimal personal website with an on-site Markdown writing studio.
 
 Requires Node.js 22.13 or newer.
 
@@ -9,7 +9,13 @@ npm ci
 npm run dev
 ```
 
-Edit `app/content.ts` to add your name or bio. Empty fields stay hidden. The homepage links to `/personal/`, with two empty categories: 随笔 at `/personal/essays/` and 从夯到拉 at `/personal/rankings/`. Edit their pages under `app/personal/` when ready to write. The site uses Arial with a fixed light appearance.
+The homepage links to Engineering Notes at `/tech/` and Personal at `/personal/`,
+with 随笔 and 从夯到拉 categories. The site uses Arial with a fixed light appearance.
+
+For local writing, also run `npm run cms`, then open
+`http://localhost:3000/admin/`. No GitHub login is needed locally and saving does
+not commit or deploy. See [the writing guide](docs/writing.md) for drafts,
+translations, and connecting a repository-scoped GitHub token for online publishing.
 
 Layout: `app/page.tsx`. Styles: `app/globals.css`.
 
@@ -17,7 +23,7 @@ Layout: `app/page.tsx`. Styles: `app/globals.css`.
 npm test
 ```
 
-This builds the site and checks the server-rendered empty template.
+This builds the site and checks rendering, Markdown safety, and draft visibility.
 
 ## Publishing
 
