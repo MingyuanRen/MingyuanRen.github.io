@@ -26,7 +26,9 @@ a:focus-visible { outline: 2px solid #087748; outline-offset: 5px; }
 .page { width: min(620px, calc(100% - 64px)); margin: 0 auto; padding: 88px 0 56px; }
 .profile-header { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 32px; }
 .avatar { width: 80px; height: 80px; display: block; object-fit: cover; }
-.identity h1 { margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.045em; font-weight: 520; }
+.identity { min-width: 0; }
+.identity h1 { margin: 0; font-size: clamp(2rem, 4.3vw, 2.25rem); line-height: 1.15; letter-spacing: -.045em; font-weight: 500; }
+.identity h1 span { display: inline-block; }
 .identity > p { margin: 7px 0 9px; color: var(--muted); }
 nav { display: flex; flex-wrap: wrap; gap: 16px; }
 nav a { color: var(--text); }
@@ -38,6 +40,23 @@ nav a:hover { color: #087748; }
 .section-title:has(+ .section-description) { margin-bottom: 0; }
 .section-description + .subpages { margin-top: 24px; }
 .subpages { flex-direction: column; align-items: flex-start; gap: 20px; }
+.about { margin-top: 32px; }
+.about h2 { margin: 0 0 16px; font-size: 17px; font-weight: 400; }
+.about p { margin: 0 0 16px; font-size: 15px; line-height: 1.7; letter-spacing: normal; }
+.about p:last-child { margin-bottom: 0; }
+.about a { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.about a:hover { color: #087748; text-decoration-color: currentColor; }
+.about strong, .about a { font-weight: 600; }
+.about .current-company { color: #087748; font-weight: 700; text-decoration-color: #087748; }
+.writing-sections { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+.writing-sections > div { min-width: 0; }
+.writing-sections > div > a { font-weight: 600; }
+.page-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.language-switch { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); letter-spacing: normal; }
+.language-switch button { font: inherit; color: inherit; background: transparent; border: 0; padding: 8px 0; cursor: pointer; }
+.language-switch button[aria-pressed="true"] { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+.language-switch button:focus-visible { outline: 2px solid #087748; outline-offset: 4px; }
+.email { overflow-wrap: anywhere; }
 :lang(zh-CN) { letter-spacing: normal; }
 
 @media (max-width: 560px) {
@@ -47,4 +66,5 @@ nav a:hover { color: #087748; }
   .identity h1 { font-size: 27px; }
   .identity > p { font-size: 13px; }
   .rule { margin-top: 26px; }
+  .writing-sections { gap: 20px; }
 }

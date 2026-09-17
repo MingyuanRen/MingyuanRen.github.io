@@ -1,6 +1,6 @@
 // Empty fields are not rendered.
 export const profile = {
-  name: "",
+  name: "Mingyuan Ren 任明远",
   bio: "",
   avatarUrl: "/avatar.jpg",
 };

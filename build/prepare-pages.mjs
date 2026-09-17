@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 // vinext's trailingSlash export currently redirects before prerendering nested
 // routes. Export without it, then provide GitHub Pages directory-style URLs.
-for (const route of ["personal", "personal/essays", "personal/rankings"]) {
+for (const route of ["tech", "personal", "personal/essays", "personal/rankings"]) {
   await mkdir(`dist/client/${route}`, { recursive: true });
   await copyFile(`dist/client/${route}.html`, `dist/client/${route}/index.html`);
 }

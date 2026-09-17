@@ -1,16 +1,3 @@
-/* eslint-disable @next/next/no-html-link-for-pages -- Static Pages navigation uses full document requests. */
+import PersonalView from "./personal-view";
 export const dynamic = "force-static";
-
-export default function Personal() {
-  return (
-    <main className="page">
-      <a className="back-link" href="/">← Home</a>
-      <h1 className="section-title">Personal</h1>
-      <p className="section-description" lang="zh-CN">一些对于电影，文学非常个人化的锐评</p>
-      <nav className="subpages" aria-label="Personal categories" lang="zh-CN">
-        <a href="/personal/essays/">随笔</a>
-        <a href="/personal/rankings/">从夯到拉</a>
-      </nav>
-    </main>
-  );
-}
+export default function Personal() { return <PersonalView />; }
