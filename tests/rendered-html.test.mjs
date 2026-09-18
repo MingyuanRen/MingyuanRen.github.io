@@ -50,10 +50,11 @@ test("personal page links to both empty categories", async () => {
   assert.match(html, /aria-pressed="true"[^>]*>中文/);
   assert.match(html, /aria-pressed="false"[^>]*>English/);
   assert.match(html, /href="\/personal\/rankings\/">从夯到拉/);
+  assert.match(html, /href="\/personal\/pictures\/">Picture/);
   assert.doesNotMatch(html, /<article\b|LEARNING|CULTURE/);
 });
 
-for (const [slug, title] of [["essays", "片刻"], ["rankings", "从夯到拉"]]) {
+for (const [slug, title] of [["essays", "片刻"], ["rankings", "从夯到拉"], ["pictures", "Picture"]]) {
   test(`${slug} has a title and parent link without sample content`, async () => {
     const { default: worker } = await import("../dist/server/index.js");
     const response = await worker.fetch(

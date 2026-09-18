@@ -67,7 +67,26 @@ warns before leaving. Save regularly or use **Download .md** as a local backup.
 The downloadable backup is marked as a draft regardless of the online version.
 Uploaded images are saved immediately; on GitHub this is a separate public commit.
 
-## Two personal writing formats
+## Picture collection
+
+Choose **Picture** in the writing studio. Drop several pictures or use **Choose
+pictures**, then optionally add captions and accessibility descriptions. Earlier /
+Later changes their order; Remove hides a picture from the collection without
+deleting its uploaded file. Preview shows the masonry layout, preserving each
+image's aspect ratio. Readers find it at Personal → Picture and can open originals.
+
+**Save collection locally** updates only this computer. Online, **Publish
+collection** commits the list and starts the Pages deployment. Pictures do not
+call OpenAI or require bilingual versions. Uploads are saved immediately (and
+are public on GitHub); the collection itself is not autosaved. Save it before
+leaving. Download collection backs up the JSON list, not image files.
+
+Up to 200 pictures per collection, 5 MB each and 20 MB per upload batch. The list
+lives in `content/pictures/gallery.json`; uploaded originals use
+`site-public/uploads/`. A missing list is an empty gallery. Revision checks
+prevent overwriting a collection edited on another computer.
+
+## Moments and tier lists
 
 **片刻 / Moments** is for a passing thought or a short paragraph. There is no
 required title: a short internal title is derived for links and metadata. Readers

@@ -8,6 +8,7 @@ import { parsePost, sections } from "../lib/markdown.mjs";
 import { translateEntry } from "../lib/translation-server.mjs";
 import { otherLanguagePath, publishedPair } from "../lib/bilingual-publish.mjs";
 import { readEntry, serializeEntry } from "../lib/writing.mjs";
+import { galleryPath, emptyGallery, parseGallery, serializeGallery } from "../lib/pictures.mjs";
 
 const revision = bytes => createHash("sha256").update(bytes).digest("hex");
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
@@ -17,7 +18,7 @@ export function writingServer(root, { translator = translateEntry, apiKey = proc
   root = resolve(root);
   let translating = false;
   function safePath(path, image = false) {
-    if (!(image ? validUploadPath(path) : validPostPath(path))) fail("不支持的文件路径。");
+    if (!(image ? validUploadPath(path) : validPostPath(path) || path === galleryPath)) fail("不支持的文件路径。");
     let current = root;
     for (const [index, part] of path.split("/").entries()) {
       current = join(current, part);
@@ -77,6 +78,10 @@ export function writingServer(root, { translator = translateEntry, apiKey = proc
     }
     try {
       const url = new URL(req.url, "http://127.0.0.1");
+      if (req.method === "GET" && url.pathname === "/api/gallery") {
+        const file = optionalRead(galleryPath);
+        return send(200, file ? { gallery: parseGallery(file.source), sha: file.sha } : { gallery: emptyGallery() });
+      }
       if (req.method === "GET" && url.pathname === "/api/posts") {
         const files = sections.flatMap(section => readdirSync(join(root, "content", section))
           .map(name => "content/" + section + "/" + name).filter(validPostPath)
@@ -86,7 +91,7 @@ export function writingServer(root, { translator = translateEntry, apiKey = proc
       if (req.method === "GET" && url.pathname === "/api/post") return send(200, read(url.searchParams.get("path")));
       const translation = req.method === "POST" && url.pathname === "/api/translate";
       const publishing = req.method === "POST" && url.pathname === "/api/publish";
-      if (!translation && !publishing && (req.method !== "PUT" || !["/api/post", "/api/image"].includes(url.pathname))) return send(404, { error: "Not found" });
+      if (!translation && !publishing && (req.method !== "PUT" || !["/api/post", "/api/image", "/api/gallery"].includes(url.pathname))) return send(404, { error: "Not found" });
       if (req.headers["content-type"] !== "application/json") fail("仅接受 JSON。", 415);
       const chunks = [];
       let size = 0;
@@ -96,6 +101,13 @@ export function writingServer(root, { translator = translateEntry, apiKey = proc
         chunks.push(chunk);
       }
       const body = JSON.parse(Buffer.concat(chunks).toString());
+      if (url.pathname === "/api/gallery") {
+        const source = serializeGallery(body.gallery);
+        const previous = optionalRead(galleryPath);
+        if (previous?.sha !== body.sha) fail("Pictures changed elsewhere. Download your collection, then reopen Picture before saving.", 409);
+        writePair([{ path: galleryPath, source }]);
+        return send(200, { sha: revision(source) });
+      }
       if (publishing) {
         if (translating) fail("Translation is already running. Please wait.", 409);
         if (!validPostPath(body.path) || typeof body.source !== "string" || body.source.length > 600_000) fail("Invalid article.");

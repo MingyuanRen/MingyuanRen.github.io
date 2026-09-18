@@ -9,6 +9,8 @@ import RankingArticle from "../components/ranking-article";
 import type { RankingData } from "../components/ranking-board";
 import { renderRankingPng } from "../../lib/ranking-image";
 import "./writing.css";
+import PictureEditor from "./picture-editor";
+import type { Gallery } from "../components/picture-gallery";
 
 type Entry = { title: string; section: string; slug: string; language: string; date: string; description: string; body: string; draft: boolean; format?: "moment"; ranking?: RankingData };
 type FileEntry = { path: string; sha: string };
@@ -18,11 +20,14 @@ type Writer = {
   save(path: string, source: string, sha?: string): Promise<{ sha: string }>;
   upload(path: string, bytes: Uint8Array): Promise<string>; disconnect(): void;
   publish(path: string, source: string, sha?: string): Promise<{ files: Array<{ path: string; source: string; sha: string }> }>;
+  readGallery(): Promise<{ gallery: Gallery; sha?: string }>;
+  saveGallery(gallery: Gallery, sha?: string): Promise<{ sha: string }>;
 };
 const categories = [
   { id: "engineering", title: "Engineering Notes", description: "Source code, systems, and things learned along the way." },
   { id: "essays", title: "片刻 / Moments", description: "A thought, a feeling, a few lines. No title required." },
   { id: "rankings", title: "从夯到拉 / Tier lists", description: "An introduction, a poster board, and your reasons." },
+  { id: "pictures", title: "Picture", description: "Film stills, small discoveries, and images worth keeping." },
 ];
 const blank = (section = "engineering", language = "zh"): Entry => ({
   title: "", section, slug: "", language,
@@ -38,6 +43,7 @@ const serverEnvironment = () => "loading";
 export default function Editor() {
   const mode = useSyncExternalStore(subscribe, environment, serverEnvironment);
   const writer = useRef<Writer | null>(null);
+  const [galleryWriter, setGalleryWriter] = useState<Writer | null>(null);
   const tokenInput = useRef<HTMLInputElement>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const feedback = useRef<HTMLDivElement>(null);
@@ -90,7 +96,7 @@ export default function Editor() {
       try {
         await next.connect();
         const items = await next.list();
-        writer.current = next; setFiles(items); setConnected(true);
+        writer.current = next; setGalleryWriter(next); setFiles(items); setConnected(true);
         let language = preferredLanguage;
         try { language = localStorage.getItem("writing-language") === "en" ? "en" : "zh"; } catch { /* Keep the in-memory choice. */ }
         setPreferredLanguage(language);
@@ -261,6 +267,7 @@ export default function Editor() {
         </button>)}
       </div>
       <p className="writer-category-description">{categories.find(category => category.id === entry.section)?.description}</p>
+      {entry.section === "pictures" && galleryWriter ? <PictureEditor writer={galleryWriter} local={mode === "local"} imageSources={imageSources} onUpload={uploadAsset} onDirty={setDirty} onBusy={setBusy} /> : <>
       <div className="writer-library">
         <details><summary>{entry.section === "essays" ? "Moments" : "Articles"} <span>({categoryFiles.length})</span></summary>
           <div className="writer-file-list">
@@ -330,10 +337,11 @@ export default function Editor() {
         {mode === "local" ? <p className="writer-help">Set <code>OPENAI_API_KEY</code> in the git-ignored <code>.env.translation</code> file and restart <code>npm run cms</code>. Do not put the key in chat or your article.</p> : <p className="writer-help">Deploy the bilingual publish workflow, add <code>OPENAI_API_KEY</code> to <a href="https://github.com/MingyuanRen/MingyuanRen.github.io/settings/secrets/actions" target="_blank" rel="noreferrer">Actions secrets ↗</a>, and explicitly grant your website-only GitHub token <strong>Actions: Read and write</strong> alongside Contents. Reconnect afterward. This permission also manages workflow runs.</p>}
         <p className="writer-help">Readers only load pre-generated pages. They cannot trigger paid translations.</p>
       </details>
+      </>}
       <p className="writer-privacy">{mode === "local" ? "Local saves stay on this computer. Nothing is committed or deployed." : "Public repository: saved drafts, uploads, and revision history are public, even before you publish. Do not include private work information."}</p>
       <div className="writer-connection">
         <span>{mode === "local" ? "Local files" : "MingyuanRen / MingyuanRen.github.io"}</span>
-        <button disabled={busy} onClick={() => { if (!canLeave()) return; writer.current?.disconnect(); writer.current = null; setConnected(false); setEntry(blank()); setOpened(null); setDirty(false); setConfirmation(null); setNotice(""); setError(""); setSavedLink(""); }}>Disconnect</button>
+        <button disabled={busy} onClick={() => { if (!canLeave()) return; writer.current?.disconnect(); writer.current = null; setGalleryWriter(null); setConnected(false); setEntry(blank()); setOpened(null); setDirty(false); setConfirmation(null); setNotice(""); setError(""); setSavedLink(""); }}>Disconnect</button>
       </div>
     </>}
     {!connected && error && <p className="writer-error" role="alert">{error}</p>}

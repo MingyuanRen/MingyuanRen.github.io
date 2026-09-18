@@ -54,6 +54,7 @@ export default function PersonalView({ category, posts = [] }: { category?: "ess
         <nav className="subpages" aria-label={language === "zh" ? "个人栏目" : "Personal categories"}>
           <a href="/personal/essays/">{copy.essays}</a>
           <a href="/personal/rankings/">{copy.rankings}</a>
+          <a href="/personal/pictures/">Picture</a>
         </nav>
       </>}
     </main>

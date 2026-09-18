@@ -1,0 +1,15 @@
+.picture-editor fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.picture-upload { text-align: center; border: 1px dashed var(--line); border-radius: 12px; padding: 28px 16px; margin: 20px 0 32px; }
+.picture-upload p { margin: 0 0 12px; }
+.picture-upload .writer-help { margin: 12px 0 0; }
+.picture-upload.is-dragging { background: #eff1ed; border-color: var(--muted); }
+.picture-edit-item { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 24px; padding: 24px 0; border-bottom: 1px solid var(--line); }
+.picture-edit-item > img { width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; }
+.picture-item-actions { display: flex; flex-wrap: wrap; gap: 16px; margin: 12px 0; font-size: 12px; }
+.picture-edit-item textarea { min-height: 70px; }
+.picture-editor .picture-gallery { columns: 3; margin: 24px 0; }
+@media (max-width: 560px) {
+  .picture-edit-item { grid-template-columns: 1fr; gap: 16px; }
+  .picture-edit-item > img { width: auto; max-width: 100%; max-height: 180px; }
+  .picture-editor .picture-gallery { columns: 2; }
+}

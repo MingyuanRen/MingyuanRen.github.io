@@ -22,5 +22,7 @@ assert.match(home, /href="\/personal\/"/);
 assert.match(personal, /href="\/"/);
 assert.match(personal, /href="\/personal\/essays\/"/);
 assert.match(personal, /href="\/personal\/rankings\/"/);
+assert.match(personal, /href="\/personal\/pictures\/"/);
 await Promise.all(["avatar.jpg", "favicon.jpg"].map(file => access(`dist/client/${file}`)));
 await access("dist/client/admin/index.html");
+await access("dist/client/personal/pictures/index.html");
