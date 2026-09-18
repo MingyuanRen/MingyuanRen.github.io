@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { posts } from "../content";
+import RankingArticle from "../../components/ranking-article";
 
 export const dynamic = "force-static";
 export function generateStaticParams() {
@@ -29,9 +30,9 @@ export default async function Article({ params }: Props) {
         </nav>}
       </div>
       <article>
-        <h1 className="article-title">{post.title}</h1>
-        <time className="post-meta" dateTime={post.date}>{post.date}</time>
+        <h1 className={"format" in post && post.format === "moment" ? "sr-only" : "article-title"}>{post.title}</h1>
         <div className="prose" dangerouslySetInnerHTML={{ __html: post.html }} />
+        {"ranking" in post && post.ranking && <RankingArticle ranking={post.ranking} language={post.language} />}
       </article>
     </main>
   );

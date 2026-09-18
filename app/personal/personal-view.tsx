@@ -29,8 +29,8 @@ function changeLanguage(language: Language) {
 }
 
 const labels = {
-  zh: { essays: "随笔", rankings: "从夯到拉", home: "← 首页", back: "← Personal" },
-  en: { essays: "Essays", rankings: "From Great to Terrible", home: "← Home", back: "← Personal" },
+  zh: { essays: "片刻", rankings: "从夯到拉", home: "← 首页", back: "← Personal" },
+  en: { essays: "Moments", rankings: "From Great to Terrible", home: "← Home", back: "← Personal" },
 };
 
 export default function PersonalView({ category, posts = [] }: { category?: "essays" | "rankings"; posts?: PostSummary[] }) {
@@ -47,6 +47,7 @@ export default function PersonalView({ category, posts = [] }: { category?: "ess
         </div>
       </div>
       <h1 className="section-title">{category ? copy[category] : "Personal"}</h1>
+      {category === "essays" && <p className="section-description">{language === "zh" ? "一些不必写成文章的念头。" : "Thoughts that don't need to become essays."}</p>}
       {category && <PostList posts={posts} language={language} />}
       {!category && <>
         <p className="section-description" lang="en">Literature, film, and things that live in the imagination.</p>

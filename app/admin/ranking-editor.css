@@ -1,0 +1,28 @@
+.ranking-editor { margin: 24px 0 32px; }
+.ranking-editor-heading { margin: 30px 0 8px; font-size: 17px; font-weight: 500; }
+.ranking-upload { padding: 25px 18px; margin: 20px 0; border: 1px dashed var(--line); display: flex; flex-direction: column; gap: 7px; align-items: center; text-align: center; }
+.ranking-upload > button { text-decoration: underline; text-underline-offset: 4px; }
+.ranking-upload > span { font-size: 12px; color: var(--muted); }
+.ranking-unranked { margin: 20px 0; padding: 0 0 8px; min-height: 70px; }
+.ranking-unranked h3 { font-size: 13px; font-weight: 400; margin: 0 0 10px; }
+.ranking-unranked h3 span { color: var(--muted); }
+.ranking-unranked .ranking-posters { background: #eff1ed; }
+.ranking-editable-poster { cursor: grab; }
+.ranking-editable-poster.is-dragging { opacity: .45; cursor: grabbing; }
+.ranking-editable-poster[draggable="false"] { cursor: default; }
+.ranking-status { min-height: 18px; }
+.ranking-film { border: 0; border-top: 1px solid var(--line); padding: 16px 0 24px; margin: 18px 0 0; min-width: 0; }
+.ranking-film > legend { padding-right: 12px; max-width: 100%; font-size: 13px; overflow-wrap: anywhere; }
+.ranking-film-header { display: grid; grid-template-columns: 48px minmax(0, 1fr) 110px; gap: 16px; align-items: end; }
+.ranking-film-header > img { width: 48px; height: 72px; object-fit: cover; background: #e6e8e4; }
+.ranking-film-header .writer-label { margin: 0; }
+.ranking-film-controls { display: flex; flex-wrap: wrap; gap: 20px; margin: 12px 0 14px; font-size: 12px; color: var(--muted); }
+.ranking-film-controls .ranking-remove { margin-left: auto; }
+.ranking-film textarea { display: block; width: 100%; min-height: 120px; margin-top: 8px; padding: 10px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); resize: vertical; font: 14px/1.8 Arial, "PingFang SC", sans-serif; }
+@media (max-width: 560px) {
+  .ranking-film-header { grid-template-columns: 40px minmax(0, 1fr); gap: 12px; }
+  .ranking-film-header > img { width: 40px; height: 60px; }
+  .ranking-film-header > label:last-child { grid-column: 2; }
+}
+.ranking-commentary-input { display: block; margin-top: 24px; }
+.writer-body-label.ranking-commentary-input textarea { min-height: 140px; }

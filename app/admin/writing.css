@@ -48,9 +48,26 @@
 .writer-confirm p { margin: 0 0 16px; }
 .writer-confirm button + button { margin-left: 20px; }
 .writer-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.writer-categories { display: flex; flex-wrap: wrap; gap: 24px; border-bottom: 1px solid var(--line); }
+.writer-page .writer-categories button { color: var(--muted); padding: 14px 0; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.writer-page .writer-categories button[aria-pressed="true"] { color: var(--text); border-color: var(--text); }
+.writer-category-description { font-size: 13px; color: var(--muted); margin: 16px 0 28px; }
+.writer-details { font-size: 12px; margin: 0 0 24px; color: var(--muted); }
+.writer-details summary { cursor: pointer; padding: 8px 0; }
+.writer-details[open] summary { margin-bottom: 20px; }
+.writer-step { font-size: 17px; margin: 28px 0 16px; font-weight: 400; }
+.writer-step > span { font-size: 11px; color: var(--muted); margin-right: 12px; }
+.writer-introduction textarea { min-height: 150px; }
+.writer-moment-body textarea { min-height: 240px; font-size: 17px; line-height: 2; }
+.writer-page .writer-export-image { text-decoration: underline; text-underline-offset: 4px; margin: 20px 0 0; }
+.writer-legacy { font-size: 12px; color: var(--muted); margin: 16px 0; }
+.writer-legacy button { text-decoration: underline; text-underline-offset: 3px; }
+.writer-language { max-width: 180px; margin-bottom: 24px; }
 @media (max-width: 560px) {
   .writer-page { width: calc(100% - 48px); }
   .writer-header { margin-top: 32px; }
   .writer-fields { column-gap: 18px; }
   .writer-actions { gap: 16px; }
+  .writer-categories { gap: 16px; }
+  .writer-page .writer-categories button { font-size: 12px; }
 }

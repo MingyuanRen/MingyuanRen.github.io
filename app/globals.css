@@ -35,11 +35,11 @@ nav a { color: var(--text); }
 nav a:hover { color: #087748; }
 .rule { height: 1px; margin: 32px 0 24px; background: var(--line); }
 .back-link { color: var(--muted); font-size: 14px; letter-spacing: normal; }
-.section-title { margin: 32px 0 24px; font-size: 17px; line-height: 1.5; font-weight: 400; }
+.section-title { margin: 36px 0 24px; color: #49514b; font-size: clamp(28px, 4vw, 32px); line-height: 1.25; font-weight: 400; letter-spacing: -.035em; }
 .section-description { margin: 4px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
-.section-title:has(+ .section-description) { margin-bottom: 0; }
-.section-description + .subpages { margin-top: 24px; }
-.subpages { flex-direction: column; align-items: flex-start; gap: 20px; }
+.section-title:has(+ .section-description) { margin-bottom: 12px; }
+.section-description + .subpages { margin-top: 32px; }
+.subpages { flex-direction: column; align-items: flex-start; gap: 20px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 18px; }
 .about { margin-top: 32px; }
 .about h2 { margin: 0 0 16px; font-size: 17px; font-weight: 400; }
 .about p { margin: 0 0 16px; font-size: 15px; line-height: 1.7; letter-spacing: normal; }
@@ -76,6 +76,10 @@ nav a:hover { color: #087748; }
 .prose table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin-bottom: 24px; }
 .prose th, .prose td { border: 1px solid var(--line); padding: 6px 12px; }
 .language-switch a[aria-current="page"] { text-decoration: underline; text-underline-offset: 4px; }
+.moment-entry { padding: 8px 0 24px; border-bottom: 1px solid var(--line); }
+.moment-entry .prose { margin: 20px 0 0; font-size: 16px; line-height: 1.95; }
+.moment-entry .prose p:last-child { margin-bottom: 0; }
+.article-page article:has(> .sr-only) { margin-top: 40px; }
 
 @media (max-width: 560px) {
   .page { width: calc(100% - 48px); padding: 32px 0 56px; }

@@ -11,9 +11,14 @@ export default function PostList({ posts, language }: { posts: PostSummary[]; la
     <ul className="post-list">
       {[...grouped.values()].map(post => (
         <li key={post.slug} lang={post.language === "zh" ? "zh-CN" : "en"}>
+          {post.format === "moment" ? <div className="moment-entry">
+            <a className="post-meta" href={post.href} aria-label={post.title}>{post.language === "zh" ? "中文" : "English"}</a>
+            <div className="prose" dangerouslySetInnerHTML={{ __html: post.momentHtml || "" }} />
+          </div> : <>
           <a href={post.href}>{post.title}</a>
-          <div className="post-meta"><time dateTime={post.date}>{post.date}</time> · {post.language === "zh" ? "中文" : "English"}</div>
+          <div className="post-meta">{post.language === "zh" ? "中文" : "English"}</div>
           {post.description && <p className="section-description">{post.description}</p>}
+          </>}
         </li>
       ))}
     </ul>

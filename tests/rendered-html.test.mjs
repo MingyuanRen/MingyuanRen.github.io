@@ -45,7 +45,7 @@ test("personal page links to both empty categories", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /href="\/"/);
-  assert.match(html, /href="\/personal\/essays\/">随笔/);
+  assert.match(html, /href="\/personal\/essays\/">片刻/);
   assert.match(html, /Literature, film, and things that live in the imagination/);
   assert.match(html, /aria-pressed="true"[^>]*>中文/);
   assert.match(html, /aria-pressed="false"[^>]*>English/);
@@ -53,7 +53,7 @@ test("personal page links to both empty categories", async () => {
   assert.doesNotMatch(html, /<article\b|LEARNING|CULTURE/);
 });
 
-for (const [slug, title] of [["essays", "随笔"], ["rankings", "从夯到拉"]]) {
+for (const [slug, title] of [["essays", "片刻"], ["rankings", "从夯到拉"]]) {
   test(`${slug} has a title and parent link without sample content`, async () => {
     const { default: worker } = await import("../dist/server/index.js");
     const response = await worker.fetch(
@@ -64,7 +64,8 @@ for (const [slug, title] of [["essays", "随笔"], ["rankings", "从夯到拉"]]
     assert.equal(response.status, 200);
     const html = await response.text();
     assert.match(html, /href="\/personal\/"/);
-    assert.ok(html.includes(title));
+    assert.ok(html.includes(`<h1 class="section-title">${title}</h1>`));
+    assert.doesNotMatch(html, /<time\b/);
     assert.doesNotMatch(html, /<article\b/);
   });
 }

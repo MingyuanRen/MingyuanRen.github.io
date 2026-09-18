@@ -1,0 +1,64 @@
+name: Publish bilingual writing
+run-name: Publish ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      source_path:
+        description: Original article path
+        required: true
+        type: string
+      source:
+        description: Article Markdown to translate and publish (public content only)
+        required: true
+        type: string
+      source_sha:
+        description: Expected original revision, empty for a new article
+        required: false
+        type: string
+      target_sha:
+        description: Expected translation revision, empty for a new translation
+        required: false
+        type: string
+      request_id:
+        description: Writing studio request identifier
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: publish-writing
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: write
+    outputs:
+      commit: ${{ steps.publish.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Translate and commit both versions
+        id: publish
+        run: node build/publish-github.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_TRANSLATION_MODEL: ${{ vars.OPENAI_TRANSLATION_MODEL }}
+  deploy:
+    needs: publish
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
+    with:
+      ref: ${{ needs.publish.outputs.commit }}

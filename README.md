@@ -10,12 +10,16 @@ npm run dev
 ```
 
 The homepage links to Engineering Notes at `/tech/` and Personal at `/personal/`,
-with 随笔 and 从夯到拉 categories. The site uses Arial with a fixed light appearance.
+with 片刻 / Moments and 从夯到拉 categories. The site uses Arial with a fixed light appearance.
+The writing page has separate modes for notes, short title-optional moments, and
+movie tier lists with draggable posters, PNG generation, and individual reasons.
 
 For local writing, also run `npm run cms`, then open
 `http://localhost:3000/admin/`. No GitHub login is needed locally and saving does
 not commit or deploy. See [the writing guide](docs/writing.md) for drafts,
-translations, and connecting a repository-scoped GitHub token for online publishing.
+automatic translation on Publish, and connecting a repository-scoped GitHub token
+for online publishing. Write in one language; Publish creates both Chinese and
+English versions. Save draft does not call OpenAI.
 
 Layout: `app/page.tsx`. Styles: `app/globals.css`.
 

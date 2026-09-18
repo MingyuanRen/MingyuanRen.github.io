@@ -1,17 +1,21 @@
 import { createServer } from "node:http";
-import { createHash } from "node:crypto";
-import { lstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { lstatSync, readFileSync, readdirSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { imageExtension, validPostPath, validUploadPath } from "../lib/writing.mjs";
 import { parsePost, sections } from "../lib/markdown.mjs";
+import { translateEntry } from "../lib/translation-server.mjs";
+import { otherLanguagePath, publishedPair } from "../lib/bilingual-publish.mjs";
+import { readEntry, serializeEntry } from "../lib/writing.mjs";
 
 const revision = bytes => createHash("sha256").update(bytes).digest("hex");
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 
 // A local-only file adapter. It has no Git credentials and never runs git.
-export function writingServer(root) {
+export function writingServer(root, { translator = translateEntry, apiKey = process.env.OPENAI_API_KEY, model = process.env.OPENAI_TRANSLATION_MODEL || undefined } = {}) {
   root = resolve(root);
+  let translating = false;
   function safePath(path, image = false) {
     if (!(image ? validUploadPath(path) : validPostPath(path))) fail("不支持的文件路径。");
     let current = root;
@@ -31,6 +35,30 @@ export function writingServer(root) {
     const source = readFileSync(safePath(path), "utf8");
     return { source, sha: revision(source) };
   }
+  function optionalRead(path) {
+    try { return read(path); } catch (error) { if (error.code === "ENOENT") return null; throw error; }
+  }
+  function writePair(pair) {
+    // Stage both files before replacing either. Roll back a filesystem failure.
+    const staged = [];
+    try {
+      for (const file of pair) {
+        const target = safePath(file.path);
+        const previous = optionalRead(file.path);
+        const temp = target + "." + randomUUID() + ".tmp";
+        writeFileSync(temp, file.source, { flag: "wx" });
+        staged.push({ target, temp, previous, written: false });
+      }
+      for (const file of staged) { renameSync(file.temp, file.target); file.written = true; }
+    } catch (error) {
+      for (const file of staged.reverse()) {
+        if (!file.written) { unlinkSync(file.temp); continue; }
+        if (file.previous) writeFileSync(file.target, file.previous.source);
+        else unlinkSync(file.target);
+      }
+      throw error;
+    }
+  }
   return createServer(async (req, res) => {
     const origin = req.headers.origin;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -43,7 +71,7 @@ export function writingServer(root) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     if (req.method === "OPTIONS") {
-      res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
+      res.setHeader("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       return send(204, null);
     }
@@ -56,16 +84,50 @@ export function writingServer(root) {
         return send(200, files);
       }
       if (req.method === "GET" && url.pathname === "/api/post") return send(200, read(url.searchParams.get("path")));
-      if (req.method !== "PUT" || !["/api/post", "/api/image"].includes(url.pathname)) return send(404, { error: "Not found" });
+      const translation = req.method === "POST" && url.pathname === "/api/translate";
+      const publishing = req.method === "POST" && url.pathname === "/api/publish";
+      if (!translation && !publishing && (req.method !== "PUT" || !["/api/post", "/api/image"].includes(url.pathname))) return send(404, { error: "Not found" });
       if (req.headers["content-type"] !== "application/json") fail("仅接受 JSON。", 415);
       const chunks = [];
       let size = 0;
       for await (const chunk of req) {
         size += chunk.length;
-        if (size > 7_100_000) fail("文件过大。", 413);
+        if (size > (translation ? 2000 : 7_100_000)) fail("文件过大。", 413);
         chunks.push(chunk);
       }
       const body = JSON.parse(Buffer.concat(chunks).toString());
+      if (publishing) {
+        if (translating) fail("Translation is already running. Please wait.", 409);
+        if (!validPostPath(body.path) || typeof body.source !== "string" || body.source.length > 600_000) fail("Invalid article.");
+        const original = serializeEntry(readEntry(body.source, body.path), false);
+        const targetPath = otherLanguagePath(body.path);
+        const beforeSource = optionalRead(body.path);
+        const beforeTarget = optionalRead(targetPath);
+        if ((beforeSource?.sha || "") !== (body.sha || "")) fail("This article changed elsewhere. Reopen the latest version before publishing.", 409);
+        translating = true;
+        try {
+          const translated = await translator(original.source, body.path, { apiKey, model });
+          const pair = publishedPair(original.source, body.path, translated);
+          if ((optionalRead(body.path)?.sha || "") !== (beforeSource?.sha || "") || (optionalRead(targetPath)?.sha || "") !== (beforeTarget?.sha || "")) fail("An article changed during translation. Neither version was published. Reopen the latest version.", 409);
+          writePair(pair);
+          return send(200, { files: pair.map(file => ({ ...file, sha: revision(file.source) })) });
+        } finally { translating = false; }
+      }
+      if (translation) {
+        if (translating) fail("A translation is already running. Please wait.", 409);
+        if (!validPostPath(body.path) || !body.path.endsWith(".zh.md")) fail("Please choose a saved Chinese article.");
+        const original = read(body.path);
+        if (original.sha !== body.sha) fail("Chinese source changed. Save or reopen the latest version first.", 409);
+        const english = body.path.replace(/\.zh\.md$/, ".en.md");
+        try { read(english); fail("An English version already exists. Open it instead.", 409); }
+        catch (error) { if (error.code !== "ENOENT") throw error; }
+        translating = true;
+        try {
+          const result = await translator(original.source, body.path, { apiKey, model });
+          if (read(body.path).sha !== body.sha) fail("Chinese source changed during translation. Your original is untouched.", 409);
+          return send(200, result); // Return an unsaved draft; never write or commit.
+        } finally { translating = false; }
+      }
       const image = url.pathname === "/api/image";
       const target = safePath(body.path, image);
       let previous;

@@ -1,0 +1,44 @@
+name: Translate writing
+run-name: Translate ${{ inputs.request_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      source_path:
+        description: Saved Chinese article path
+        required: true
+        type: string
+      source_sha:
+        description: Expected Chinese article revision
+        required: true
+        type: string
+      request_id:
+        description: Writing studio request identifier
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: translation-${{ inputs.source_path }}
+  cancel-in-progress: false
+jobs:
+  translate:
+    if: github.ref == 'refs/heads/main' && github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Generate an English draft (never publish)
+        run: node build/translate-github.mjs
+        env:
+          SOURCE_PATH: ${{ inputs.source_path }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_TRANSLATION_MODEL: ${{ vars.OPENAI_TRANSLATION_MODEL }}
