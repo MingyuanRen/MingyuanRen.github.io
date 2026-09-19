@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
-import { githubWriter, localWriter, readEntry, serializeEntry, imageExtension } from "../../lib/writing.mjs";
+import { sessionWriter, localWriter, readEntry, serializeEntry, imageExtension } from "../../lib/writing.mjs";
 import { renderMarkdown } from "../../lib/markdown.mjs";
 import RankingEditor from "./ranking-editor";
 import RankingArticle from "../components/ranking-article";
@@ -11,6 +10,7 @@ import { renderRankingPng } from "../../lib/ranking-image";
 import "./writing.css";
 import PictureEditor from "./picture-editor";
 import type { Gallery } from "../components/picture-gallery";
+import SignInCard from "./sign-in-card";
 
 type Entry = { title: string; section: string; slug: string; language: string; date: string; description: string; body: string; draft: boolean; format?: "moment"; ranking?: RankingData };
 type FileEntry = { path: string; sha: string };
@@ -22,6 +22,7 @@ type Writer = {
   publish(path: string, source: string, sha?: string): Promise<{ files: Array<{ path: string; source: string; sha: string }> }>;
   readGallery(): Promise<{ gallery: Gallery; sha?: string }>;
   saveGallery(gallery: Gallery, sha?: string): Promise<{ sha: string }>;
+  logout?(): Promise<void>;
 };
 const categories = [
   { id: "engineering", title: "Engineering Notes", description: "Source code, systems, and things learned along the way." },
@@ -36,7 +37,8 @@ const blank = (section = "engineering", language = "zh"): Entry => ({
   ...(section === "rankings" ? { ranking: { version: 1 as const, items: [] } } : {}),
 });
 const subscribe = () => () => {};
-const environment = () => window.location.origin === "http://localhost:3000" ? "local"
+const environment = () => document.querySelector('meta[name="writing-session"][content="same-origin"]') ? "session"
+  : window.location.origin === "http://localhost:3000" ? "local"
   : window.location.origin === "https://mingyuanren.github.io" ? "github" : "unsupported";
 const serverEnvironment = () => "loading";
 
@@ -44,7 +46,9 @@ export default function Editor() {
   const mode = useSyncExternalStore(subscribe, environment, serverEnvironment);
   const writer = useRef<Writer | null>(null);
   const [galleryWriter, setGalleryWriter] = useState<Writer | null>(null);
-  const tokenInput = useRef<HTMLInputElement>(null);
+  const [studioOrigin, setStudioOrigin] = useState("");
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [signInFailed, setSignInFailed] = useState(false);
   const imageInput = useRef<HTMLInputElement>(null);
   const feedback = useRef<HTMLDivElement>(null);
   const operation = useRef(false);
@@ -65,6 +69,29 @@ export default function Editor() {
   const objectUrls = useRef<string[]>([]);
   const categoryFiles = files.filter(file => file.path.startsWith("content/" + entry.section + "/"));
   const moment = entry.format === "moment";
+
+  useEffect(() => {
+    let active = true;
+    if (mode === "github") {
+      fetch("/writing-config.json", { cache: "no-store", credentials: "omit" }).then(response => response.json()).then(config => {
+        if (!active || !config.studioOrigin) return;
+        const url = new URL(config.studioOrigin);
+        if (url.protocol === "https:" && url.origin === config.studioOrigin && !url.username && !url.password) setStudioOrigin(url.origin);
+      }).catch(() => { /* Remain unavailable until the deployment is configured. */ });
+    }
+    if (mode !== "session") return () => { active = false; };
+    const next = sessionWriter();
+    next.connect().then(() => next.list()).then(items => {
+      if (!active) { next.disconnect(); return; }
+      writer.current = next; setGalleryWriter(next); setFiles(items); setConnected(true);
+      let language = "zh";
+      try { language = localStorage.getItem("writing-language") === "en" ? "en" : "zh"; } catch { /* Use Chinese by default. */ }
+      setPreferredLanguage(language); setEntry(current => ({ ...current, language, date: current.date || blank().date }));
+    }).catch(cause => { if (active && cause.status !== 401) setError(cause.message); }).finally(() => {
+      if (active) { setSessionChecked(true); setSignInFailed(new URLSearchParams(window.location.search).get("signin") === "failed"); }
+    });
+    return () => { active = false; next.disconnect(); };
+  }, [mode]);
 
   useEffect(() => {
     if (error || notice) feedback.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -90,9 +117,8 @@ export default function Editor() {
   }
   async function connect() {
     await run(async () => {
-      if (mode !== "local" && mode !== "github") throw new Error("Open this editor on localhost:3000 or mingyuanren.github.io.");
-      const next = mode === "local" ? localWriter() : githubWriter(tokenInput.current?.value.trim() || "");
-      if (tokenInput.current) tokenInput.current.value = "";
+      if (mode !== "local") throw new Error("Please sign in with GitHub.");
+      const next = localWriter();
       try {
         await next.connect();
         const items = await next.list();
@@ -165,7 +191,7 @@ export default function Editor() {
   }
   function requestSave(draft: boolean) {
     try { serializeEntry(withUrlName(entry), draft); } catch (cause) { setError((cause as Error).message); return; }
-    if (mode === "github") setConfirmation(draft ? "draft" : "publish");
+    if (mode !== "local") setConfirmation(draft ? "draft" : "publish");
     else void save(draft);
   }
   function download() {
@@ -188,7 +214,7 @@ export default function Editor() {
     return url;
   }
   async function upload(file: File) {
-    if (mode === "github" && !window.confirm("Upload this image to the public GitHub repository now? This creates a commit, even if your article is still a draft.")) return;
+    if (mode !== "local" && !window.confirm("Upload this image to the public GitHub repository now? This creates a commit, even if your article is still a draft.")) return;
     await run(async () => {
       const url = await uploadAsset(file);
       setEntry(current => ({ ...current, body: current.body + "\n\n![Image description](" + url + ")\n" }));
@@ -205,7 +231,7 @@ export default function Editor() {
     try {
       // Lock navigation before the first await; an upload belongs to this entry.
       for (const file of selected) imageExtension(new Uint8Array(await file.arrayBuffer()));
-      if (mode === "github" && !window.confirm("Upload these posters to the public GitHub repository? Each image is public immediately, including for drafts.")) return [];
+      if (mode !== "local" && !window.confirm("Upload these posters to the public GitHub repository? Each image is public immediately, including for drafts.")) return [];
       for (const file of selected) {
         const image = await uploadAsset(file);
         uploaded.push({ image, title: file.name.replace(/\.[^.]+$/, "").slice(0, 200) || "Untitled film" });
@@ -234,7 +260,7 @@ export default function Editor() {
 
   return <main className="page writer-page">
     <div className="page-toolbar">
-      <Link className="back-link" href="/" onClick={event => { if (!canLeave()) event.preventDefault(); }}>← Mingyuan Ren</Link>
+      <a className="back-link" href={mode === "session" ? "https://mingyuanren.github.io/" : "/"} onClick={event => { if (!canLeave()) event.preventDefault(); }}>← Mingyuan Ren</a>
       <span className="writer-eyebrow">{mode === "local" ? "LOCAL PREVIEW" : "WRITING"}</span>
     </div>
     <header className="writer-header"><h1>Write.</h1><p>Notes, passing thoughts, and very personal rankings.</p></header>
@@ -244,22 +270,10 @@ export default function Editor() {
         <p>This is your local workspace. Nothing here commits or publishes to GitHub.</p>
         <button className="writer-primary" disabled={busy} onClick={() => void connect()}>Start writing locally</button>
         <p className="writer-help">Run <code>npm run cms</code> alongside the website.</p>
-      </> : mode === "github" ? <>
-        <p>Connect your website repository to write and publish here. No extra hosting account needed.</p>
-        <details className="writer-setup"><summary>One-time setup on GitHub</summary>
-          <ol><li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">GitHub token settings ↗</a> and create a fine-grained token.</li>
-            <li>Set an expiration. Under “Only select repositories”, choose <strong>MingyuanRen.github.io</strong>.</li>
-            <li>Give repository <strong>Contents</strong> permission <strong>Read and write</strong> for drafts. Bilingual publishing also needs <strong>Actions: Read and write</strong>, which can manage this repository’s workflow runs.</li>
-            <li>Paste the token below. Don’t share it in chat or commit it to the repository.</li></ol>
-        </details>
-        <form onSubmit={event => { event.preventDefault(); void connect(); }}>
-          <label className="writer-label">GitHub fine-grained token
-            <input ref={tokenInput} type="password" autoComplete="off" spellCheck={false} placeholder="github_pat_…" required />
-          </label>
-          <button className="writer-primary" disabled={busy} type="submit">Connect GitHub</button>
-        </form>
-        <p className="writer-help">Kept in memory for this tab only. Refreshing or disconnecting clears it. This is token-based access, not an OAuth login.</p>
-      </> : <p>{mode === "loading" ? "Opening your workspace…" : "Open this editor at localhost:3000 or mingyuanren.github.io."}</p>}
+      </> : mode === "github" || mode === "session" ? <SignInCard
+        href={mode === "session" ? "/auth/login" : studioOrigin ? studioOrigin + "/admin/" : undefined}
+        checking={mode === "session" && !sessionChecked} failed={signInFailed} />
+        : <p>{mode === "loading" ? "Opening your workspace…" : "Open this editor at localhost:3000 or mingyuanren.github.io."}</p>}
     </section> : <>
       <div className="writer-categories" role="group" aria-label="Writing categories">
         {categories.map(category => <button key={category.id} aria-pressed={entry.section === category.id} disabled={busy} onClick={() => { if (entry.section !== category.id) newArticle(category.id); }}>
@@ -325,7 +339,7 @@ export default function Editor() {
         <p className="writer-help">Publish sends your text to OpenAI (GPT-5.6) and uses API credits to publish both 中文 and English. Republishing regenerates the other language, replacing its previous wording. Save draft does not translate.</p>
       </fieldset>
       <div ref={feedback}>
-        {error && <p className="writer-error" role="alert">{error}</p>}
+        {error && <p className="writer-error" role="alert">{error}{mode === "session" && <> <a href="/auth/login" target="_blank" rel="noreferrer">Sign in again in a new tab ↗</a></>}</p>}
         {notice && <p className="writer-notice" role="status">{notice}</p>}
       </div>
       {confirmation && <section className="writer-confirm" aria-label="Confirm GitHub commit">
@@ -334,17 +348,19 @@ export default function Editor() {
         <button disabled={busy} onClick={() => setConfirmation(null)}>Cancel</button>
       </section>}
       <details className="writer-setup"><summary>Translation setup</summary>
-        {mode === "local" ? <p className="writer-help">Set <code>OPENAI_API_KEY</code> in the git-ignored <code>.env.translation</code> file and restart <code>npm run cms</code>. Do not put the key in chat or your article.</p> : <p className="writer-help">Deploy the bilingual publish workflow, add <code>OPENAI_API_KEY</code> to <a href="https://github.com/MingyuanRen/MingyuanRen.github.io/settings/secrets/actions" target="_blank" rel="noreferrer">Actions secrets ↗</a>, and explicitly grant your website-only GitHub token <strong>Actions: Read and write</strong> alongside Contents. Reconnect afterward. This permission also manages workflow runs.</p>}
+        {mode === "local" ? <p className="writer-help">Set <code>OPENAI_API_KEY</code> in the git-ignored <code>.env.translation</code> file and restart <code>npm run cms</code>. Do not put the key in chat or your article.</p> : <p className="writer-help">Translation uses the repository’s <code>OPENAI_API_KEY</code> Actions secret. The GitHub App needs Contents and Actions read/write access to this website repository. Never enter API keys in your writing.</p>}
         <p className="writer-help">Readers only load pre-generated pages. They cannot trigger paid translations.</p>
       </details>
       </>}
       <p className="writer-privacy">{mode === "local" ? "Local saves stay on this computer. Nothing is committed or deployed." : "Public repository: saved drafts, uploads, and revision history are public, even before you publish. Do not include private work information."}</p>
       <div className="writer-connection">
         <span>{mode === "local" ? "Local files" : "MingyuanRen / MingyuanRen.github.io"}</span>
-        <button disabled={busy} onClick={() => { if (!canLeave()) return; writer.current?.disconnect(); writer.current = null; setGalleryWriter(null); setConnected(false); setEntry(blank()); setOpened(null); setDirty(false); setConfirmation(null); setNotice(""); setError(""); setSavedLink(""); }}>Disconnect</button>
+        <button disabled={busy} onClick={() => { if (!canLeave()) return; void run(async () => {
+          await writer.current?.logout?.(); writer.current?.disconnect(); writer.current = null; setGalleryWriter(null); setConnected(false); setEntry(blank()); setOpened(null); setDirty(false); setConfirmation(null); setNotice(""); setError(""); setSavedLink("");
+        }); }}>{mode === "local" ? "Disconnect" : "Sign out"}</button>
       </div>
     </>}
     {!connected && error && <p className="writer-error" role="alert">{error}</p>}
-    {savedLink && <p className="writer-result"><a href={savedLink} target="_blank" rel="noreferrer">View article ↗</a>{mode === "github" && <> · <a href="https://github.com/MingyuanRen/MingyuanRen.github.io/actions" target="_blank" rel="noreferrer">Check deployment ↗</a></>}</p>}
+    {savedLink && <p className="writer-result"><a href={savedLink} target="_blank" rel="noreferrer">View article ↗</a>{mode !== "local" && <> · <a href="https://github.com/MingyuanRen/MingyuanRen.github.io/actions" target="_blank" rel="noreferrer">Check deployment ↗</a></>}</p>}
   </main>;
 }

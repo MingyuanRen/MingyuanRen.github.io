@@ -1,0 +1,17 @@
+{
+  "name": "mingyuan-writing",
+  "account_id": "7b2010130b811c136d127ca4540c9ac9",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-09-18",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "durable_objects": { "bindings": [{ "name": "SESSIONS", "class_name": "WritingSession" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WritingSession"] }],
+  "vars": {
+    "STUDIO_ORIGIN": "https://mingyuan-writing.playful-personal-site-template.workers.dev",
+    "GITHUB_CLIENT_ID": "Iv23lixJSaYTCkqmEx5I",
+    "GITHUB_USER_ID": "87336314",
+    "GITHUB_REPOSITORY_ID": "1372583156"
+  }
+}

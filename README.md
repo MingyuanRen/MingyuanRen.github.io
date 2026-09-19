@@ -17,7 +17,7 @@ movie tier lists with draggable posters, PNG generation, and individual reasons.
 For local writing, also run `npm run cms`, then open
 `http://localhost:3000/admin/`. No GitHub login is needed locally and saving does
 not commit or deploy. See [the writing guide](docs/writing.md) for drafts,
-automatic translation on Publish, and connecting a repository-scoped GitHub token
+automatic translation on Publish, and signing in with the private GitHub App
 for online publishing. Write in one language; Publish creates both Chinese and
 English versions. Save draft does not call OpenAI.
 

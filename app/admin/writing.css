@@ -71,3 +71,4 @@
   .writer-categories { gap: 16px; }
   .writer-page .writer-categories button { font-size: 12px; }
 }
+.writer-sign-in { display: inline-block; margin: 12px 0; }

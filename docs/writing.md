@@ -1,18 +1,21 @@
 # Writing on your website
 
+The online studio uses GitHub App sign-in with a persistent browser session.
+See [GitHub sign-in setup](github-sign-in.md) for hosting and security details.
+
 Open `/admin/`. The writing page uses the same typography, colors, and layout
 as the public site. It supports Markdown, a rendered preview, image uploads,
 drafts, existing-article editing, and automatic bilingual publication using OpenAI.
-You do not need to edit code or register with Cloudflare or Netlify.
+You do not need to edit code or configure hosting each time you write.
 
 ## Using another computer
 
-For writing only, open https://mingyuanren.github.io/admin/ and connect with a
-fine-grained GitHub token scoped only to this repository, with **Contents: Read
-and write** and **Actions: Read and write**. No Node.js, local server, or local
-OpenAI key is needed. The translation key stays in the repository's Actions
-secret. The token must be entered again after refreshing; keep it in a password
-manager, not in the repository. Online drafts and uploads are public in GitHub.
+For writing only, open https://mingyuanren.github.io/admin/ and choose
+**Sign in with GitHub**. The studio opens on the configured Cloudflare Worker.
+Sign in once per browser; the session lasts up to 30 days unless you sign out or
+revoke access. No token copying, Node.js, local server, or local OpenAI key is
+needed. The translation key stays in the repository's Actions secret.
+Online drafts and uploads are public in GitHub.
 
 For development, install Node.js 24 and Git, then:
 
@@ -145,10 +148,9 @@ Online setup, **after approving and deploying the bilingual publication workflow
 1. In the website repository, open Settings → Secrets and variables → Actions →
    **New repository secret**. Name it `OPENAI_API_KEY` and enter the key yourself.
    Use a secret, not a public repository variable or a Markdown file.
-2. Bilingual publishing needs an additional permission: explicitly grant
-   the website-only fine-grained token **Actions: Read and write**. This permission
-   can also manage workflow runs; leave all other repositories inaccessible.
-   Draft saving still only requires Contents: Read and write.
+2. Install the private writing GitHub App only on the website repository, with
+   **Contents: Read and write** and **Actions: Read and write**. This permits
+   article/image commits and publication workflow runs, not other repositories.
 3. Reconnect the writing studio. Write in either language and choose **Publish**.
 4. The studio starts `publish.yml` on `main` with the current text and expected
    revisions. GitHub Actions translates it and creates one commit containing both
@@ -189,31 +191,21 @@ PNG are separate commits; if the later article save fails (for example a revisio
 conflict), an unreferenced image can remain in the public repository. Your current
 text remains in the editor for download/recovery.
 
-## Connect GitHub — no login server
+## Sign in with GitHub
 
-This implementation uses a fine-grained personal access token, **not OAuth**.
-GitHub Pages only serves static files. A token allows the browser to use
-[GitHub's Contents API](https://docs.github.com/en/rest/repos/contents)
-directly, without adding an authentication backend.
+1. Visit https://mingyuanren.github.io/admin/ and choose **Sign in with GitHub**.
+2. The writing studio opens on its Cloudflare Worker. If this browser is already
+   signed in, your workspace opens automatically. Otherwise sign in as MingyuanRen
+   and approve the private writing App on GitHub.
+3. Write, preview, save a draft or publish in the studio. The public site remains
+   on GitHub Pages. Local writing at localhost still needs no GitHub login.
+4. Use **Sign out** on shared computers. If a session expires while writing,
+   sign in again in a new tab to keep your unsaved text in the original tab.
 
-After the implementation has been reviewed and deployed:
-
-1. Visit https://mingyuanren.github.io/admin/.
-2. Follow **One-time setup on GitHub** to
-   [create a fine-grained token](https://github.com/settings/personal-access-tokens/new).
-3. Set an expiration, choose **Only select repositories**, and select
-   **MingyuanRen.github.io**. Give **Contents: Read and write** permission.
-   Metadata read access is automatic; do not grant access to other repositories.
-4. Paste the token into the password field and click **Connect GitHub**.
-   Do not send the token in chat, commit it, or put it in an environment variable.
-5. Write, preview, save a draft or publish without leaving the website.
-
-The token is held only in memory for the tab, never in localStorage, sessionStorage,
-cookies, URLs or generated files. **Re-enter it after refreshing or reopening the
-page.** Disconnect clears it. It is sent only to https://api.github.com, with
-redirects blocked and browser credentials omitted. Revoke it in GitHub settings
-if you no longer want this access. Repository permissions are enforced by GitHub;
-the page's UI/account checks are not a replacement for token scope.
+The browser stores only an opaque Secure/HttpOnly session cookie. GitHub access
+and refresh tokens stay encrypted on the Worker, not in the page or repository.
+Revoke/uninstall the GitHub App to revoke all access; Sign out ends the current
+session. The old PAT input has been removed. Revoke any previously shared PATs.
 
 Each online save requires confirmation and creates a commit on `main`.
 Publishing triggers the existing GitHub Pages workflow. A successful commit
@@ -239,7 +231,7 @@ up to 5 MB. SVG/HTML uploads are rejected. The renderer disables raw HTML and
 unsafe link protocols. Draft bodies are excluded from published article data.
 
 The static site and its scripts are public. Anyone can visit the admin URL, but
-only your repository-scoped token can write. No credentials are included in the
+only your owner-authorized GitHub App session can write. No credentials are included in the
 site. No third-party editor scripts or analytics are loaded by the writing page.
 
 ## Dependency review
