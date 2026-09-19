@@ -11,6 +11,7 @@
 .ranking-film-description { margin-top: 20px; }
 .ranking-commentary { margin-top: 32px; }
 .ranking-reason .prose { margin-top: 16px; font-size: 15px; }
+.ranking-image-credits { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.7; }
 @media (max-width: 480px) {
   .ranking-film-image img { max-width: 120px; max-height: 180px; }
 }

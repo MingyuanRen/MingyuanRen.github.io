@@ -3,6 +3,7 @@ import RankingBoard, { type RankingData } from "./ranking-board";
 import { tiers } from "../../lib/rankings.mjs";
 import { renderMarkdown } from "../../lib/markdown.mjs";
 import "./ranking-article.css";
+import TmdbCredit from "./tmdb-credit";
 
 export default function RankingArticle({ ranking, preview = false, imageSources = {}, language = "zh" }: {
   ranking: RankingData; preview?: boolean; imageSources?: Record<string, string>; language?: string;
@@ -27,6 +28,10 @@ export default function RankingArticle({ ranking, preview = false, imageSources 
           {item.reason && <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(item.reason) }} />}
         </section>
       </section>)}
+    </section>}
+    {ordered.some(item => item.tmdbId) && <section aria-label="Image credits" className="ranking-image-credits">
+      <p>{language === "zh" ? "图片来源：" : "Image sources: "}{ordered.filter(item => item.tmdbId).map((item, index) => <span key={item.id}>{index > 0 && " · "}<a href={`https://www.themoviedb.org/movie/${item.tmdbId}`} target="_blank" rel="noreferrer">{item.title || "TMDB"}</a></span>)}</p>
+      <TmdbCredit />
     </section>}
   </div>;
 }

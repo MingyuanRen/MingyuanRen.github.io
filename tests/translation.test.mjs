@@ -10,7 +10,7 @@ import { writingServer } from "../build/writing-server.mjs";
 import { serializeEntry, readEntry, encodedText, decodedText, githubWriter } from "../lib/writing.mjs";
 
 const image = "/uploads/00000000-0000-0000-0000-000000000000.png";
-const entry = { title: "我的电影", section: "rankings", slug: "films", date: "2026-09-17", language: "zh", draft: false, description: "", body: "看了一些电影。", ranking: { version: 1, boardImage: image, commentary: "想说的话。", items: [{ id: "film-1", title: "电影", image, tier: "s", reason: "喜欢。" }] } };
+const entry = { title: "我的电影", section: "rankings", slug: "films", date: "2026-09-17", language: "zh", draft: false, description: "", body: "看了一些电影。", ranking: { version: 1, boardImage: image, commentary: "想说的话。", items: [{ id: "film-1", title: "电影", image, tier: "s", reason: "喜欢。", tmdbId: 204 }] } };
 const original = serializeEntry(entry, false);
 const output = { title: "My films", description: "", body: "Some films I watched.", commentary: "A few thoughts.", films: [{ id: "film-1", title: "Film", reason: "Loved it." }] };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status });
@@ -27,7 +27,7 @@ test("OpenAI translation sends text only and produces a linked, unpublished draf
     assert.deepEqual(body.reasoning, { effort: "none" });
     assert.equal(body.store, false);
     assert.equal(body.text.format.strict, true);
-    assert.doesNotMatch(body.input, /uploads|boardImage|tier|test-secret/);
+    assert.doesNotMatch(body.input, /uploads|boardImage|tier|tmdbId|test-secret/);
     assert.ok(body.max_output_tokens <= 16000);
     return response(output);
   } });

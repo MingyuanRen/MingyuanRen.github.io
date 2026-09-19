@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { sessionWriter, localWriter, readEntry, serializeEntry, imageExtension } from "../../lib/writing.mjs";
+import { sessionWriter, localWriter, readEntry, serializeEntry, imageExtension, fromBase64 } from "../../lib/writing.mjs";
+import type { Movie, MovieImage, MovieRequest, MovieResult } from "./movie-picker";
 import { renderMarkdown } from "../../lib/markdown.mjs";
 import RankingEditor from "./ranking-editor";
 import RankingArticle from "../components/ranking-article";
@@ -23,6 +24,7 @@ type Writer = {
   readGallery(): Promise<{ gallery: Gallery; sha?: string }>;
   saveGallery(gallery: Gallery, sha?: string): Promise<{ sha: string }>;
   logout?(): Promise<void>;
+  movies(input: MovieRequest): Promise<MovieResult>;
 };
 const categories = [
   { id: "engineering", title: "Engineering Notes", description: "Source code, systems, and things learned along the way." },
@@ -242,6 +244,25 @@ export default function Editor() {
     } finally { setBusy(false); }
     return uploaded;
   }
+  async function movieRequest(input: MovieRequest) {
+    if (!writer.current) throw new Error("Connect the writing studio first.");
+    return writer.current.movies(input);
+  }
+  async function importMovieImage(movie: Movie, image: MovieImage) {
+    if ((entry.ranking?.items.length || 0) >= 40) throw new Error("A board can hold up to 40 posters.");
+    if (mode !== "local" && !window.confirm("Save this TMDB image to the public GitHub repository and add it to Unranked? The image becomes public immediately, even for drafts. Only import images you are entitled to use.")) return null;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const result = await movieRequest({ action: "download", movieId: movie.id, path: image.path, kind: image.kind });
+      if (!result.content || !result.extension) throw new Error("No image was returned.");
+      const bytes = fromBase64(result.content);
+      const extension = imageExtension(bytes);
+      const file = new File([bytes], `tmdb-${movie.id}.${extension}`, { type: extension === "jpg" ? "image/jpeg" : `image/${extension}` });
+      const saved = await uploadAsset(file);
+      setNotice(`${movie.title} added${result.resized ? " using a smaller TMDB image to fit the 5 MB limit" : " at original resolution"}.`);
+      return { image: saved, title: movie.title };
+    } finally { setBusy(false); }
+  }
   function updateRanking(ranking: RankingData) {
     setEntry(current => ({ ...current, ranking: { ...ranking, boardImage: undefined } }));
     setDirty(true); setSavedLink(""); setConfirmation(null);
@@ -325,7 +346,7 @@ export default function Editor() {
           </label>
           {entry.ranking && <>
             <h2 className="writer-step"><span>02</span> Make your ranking</h2>
-            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} disabled={busy} imageSources={imageSources} />
+            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} onMovieRequest={movieRequest} onImport={importMovieImage} disabled={busy} imageSources={imageSources} />
             <button className="writer-export-image" onClick={() => void downloadRanking()}>Download ranking image ↓</button>
           </>}
         </>}

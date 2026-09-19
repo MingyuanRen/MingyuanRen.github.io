@@ -1,4 +1,5 @@
 import { allowedRequest } from "./policy.mjs";
+import { movieImages } from "../lib/movie-images.mjs";
 
 const SITE = "https://mingyuanren.github.io";
 const REPO = "/repos/MingyuanRen/MingyuanRen.github.io";
@@ -105,6 +106,13 @@ export class WritingSession {
     if (path === "/session") return json({ login: data.login, csrf: data.csrf });
     if (request.headers.get("X-Writing-CSRF") !== data.csrf) fail(403, "Invalid session request. Reload after saving your work.");
     if (path === "/logout") { await this.ctx.storage.deleteAll(); return json({ ok: true }); }
+    if (path === "/movies") {
+      // Authenticated, CSRF-checked and bounded independently of GitHub writes.
+      const now = Date.now();
+      if (!this.movieWindow || now - this.movieWindow > 60_000) { this.movieWindow = now; this.movieRequests = 0; }
+      if (++this.movieRequests > 30) fail(429, "Too many image requests. Wait a minute before trying again.");
+      return json(await movieImages(await readBody(request, 2000), { token: this.env.TMDB_READ_ACCESS_TOKEN, fetcher: this.fetcher }));
+    }
     if (path !== "/proxy") fail(404, "Not found.");
     const operation = allowedRequest(await readBody(request));
     if (data.tokenExpires <= Date.now() + 60_000) {
@@ -177,14 +185,14 @@ export async function handleRequest(request, env, fetcher = fetch) {
       return redirect(env.STUDIO_ORIGIN + "/admin/?signin=failed", [cookie(OAUTH, "", 0)]);
     }
   }
-  if (["/auth/session", "/auth/logout", "/api/github"].includes(url.pathname)) {
+  if (["/auth/session", "/auth/logout", "/api/github", "/api/movies"].includes(url.pathname)) {
     const read = url.pathname === "/auth/session";
     if (request.method !== (read ? "GET" : "POST")) return json({ error: "Method not allowed." }, 405);
     if ((!read && request.headers.get("Origin") !== env.STUDIO_ORIGIN) || request.headers.get("Sec-Fetch-Site") === "cross-site") return json({ error: "Cross-site request rejected." }, 403);
     const id = readCookie(request, SESSION);
     if (!validId(id)) return json({ error: "Please sign in with GitHub." }, 401);
-    const path = read ? "/session" : url.pathname === "/auth/logout" ? "/logout" : "/proxy";
-    const body = path === "/proxy" ? await readBody(request) : undefined;
+    const path = read ? "/session" : url.pathname === "/auth/logout" ? "/logout" : url.pathname === "/api/movies" ? "/movies" : "/proxy";
+    const body = path === "/proxy" || path === "/movies" ? await readBody(request, path === "/movies" ? 2000 : undefined) : undefined;
     const result = await object(env, id).fetch(internal(path, body, request.headers.get("X-Writing-CSRF")));
     if (path === "/logout" && result.ok) return json({ ok: true }, 200, { "Set-Cookie": cookie(SESSION, "", 0) });
     return result;
@@ -192,7 +200,7 @@ export async function handleRequest(request, env, fetcher = fetch) {
   if (request.method !== "GET" && request.method !== "HEAD") return json({ error: "Method not allowed." }, 405);
   // Reuse the deployed static editor. Never forward browser cookies or headers
   // to Pages; credentials and OAuth endpoints are handled above on this origin.
-  if (url.pathname === "/admin" || url.pathname === "/admin/" || /^\/_next\/static\/[A-Za-z0-9_./-]+$/.test(url.pathname) || /^\/uploads\/[a-f0-9-]+\.(png|jpg|gif|webp)$/.test(url.pathname)) {
+  if (url.pathname === "/admin" || url.pathname === "/admin/" || url.pathname === "/tmdb.svg" || /^\/_next\/static\/[A-Za-z0-9_./-]+$/.test(url.pathname) || /^\/uploads\/[a-f0-9-]+\.(png|jpg|gif|webp)$/.test(url.pathname)) {
     const path = url.pathname.startsWith("/admin") ? "/admin/" : url.pathname;
     const upstream = await fetcher(SITE + path, { method: "GET", redirect: "manual" });
     if (upstream.status >= 300 && upstream.status < 400) fail(502, "Unexpected editor redirect.");
@@ -217,8 +225,8 @@ export default {
     secured.headers.set("Referrer-Policy", "no-referrer");
     secured.headers.set("X-Content-Type-Options", "nosniff");
     secured.headers.set("X-Frame-Options", "DENY");
-    secured.headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
-    if (new URL(request.url).pathname.startsWith("/auth/") || new URL(request.url).pathname === "/api/github") secured.headers.set("Cache-Control", "no-store");
+    secured.headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://image.tmdb.org; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    if (new URL(request.url).pathname.startsWith("/auth/") || new URL(request.url).pathname.startsWith("/api/")) secured.headers.set("Cache-Control", "no-store");
     return secured;
   },
 };

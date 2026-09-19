@@ -164,3 +164,28 @@ test("browser session adapter sends no GitHub token and can restore connection w
   assert.equal(calls.filter(c => c === "/auth/session").length, 1);
   await writer.logout(); await assert.rejects(writer.connect(), /disconnected/);
 });
+
+test("movie search is owner-session and CSRF protected, has no GitHub proxy access and is rate limited", async () => {
+  const f = fixture();
+  const body = JSON.stringify({ action: "search", query: "电影" });
+  const headers = { Origin: origin, "Content-Type": "application/json" };
+  assert.equal((await f.request("/api/movies", { method: "POST", headers, body })).status, 401);
+  const { cookie } = await f.login();
+  const { csrf } = await (await f.request("/auth/session", { headers: { Cookie: cookie } })).json();
+  const request = changed => f.request("/api/movies", { method: "POST", headers: { ...headers, Cookie: cookie, "X-Writing-CSRF": csrf, ...changed }, body });
+  assert.equal((await request({ Origin: "https://evil.example" })).status, 403);
+  assert.equal((await request({ "X-Writing-CSRF": "bad" })).status, 403);
+  // Missing provider key is visible but leaves the GitHub session intact.
+  assert.equal((await request()).status, 503);
+  f.env.TMDB_READ_ACCESS_TOKEN = "test-only-tmdb";
+  const { object } = f.objects.get(cookie.split("=")[1]);
+  object.fetcher = async (url, options) => {
+    assert.ok(url.startsWith("https://api.themoviedb.org/3/search/movie?"));
+    assert.equal(options.headers.Authorization, "Bearer test-only-tmdb");
+    return Response.json({ results: [], total_pages: 1 });
+  };
+  assert.equal((await request()).status, 200);
+  object.movieRequests = 30;
+  assert.equal((await request()).status, 429);
+  assert.equal((await f.request("/auth/session", { headers: { Cookie: cookie } })).status, 200);
+});

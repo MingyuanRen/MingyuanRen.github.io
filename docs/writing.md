@@ -100,7 +100,9 @@ remain internal sorting metadata. The existing
 **从夯到拉 / Tier lists** has three parts:
 
 1. Write an introduction.
-2. Upload/drop poster images into the upload area, then drag them from Unranked
+2. Use **Find movie images** to search TMDB, or upload/drop your own images.
+   Choose a film, switch between **Posters** and **Backdrops / stills**, select
+   an image, and click **Add selected image to Unranked**. Then drag from Unranked
    into 夯, 顶级, 人上人, NPC, or 拉完了. Drop onto another poster to insert before it.
    The tier selector and Earlier/Later buttons provide keyboard/touch alternatives.
 3. Optionally write a free-form paragraph in the blank text area below the board.
@@ -120,6 +122,34 @@ image URL. Reopening an article restores its layout, images, and reasons, so the
 PNG is not your only editable copy. Removing a poster from the board does not
 delete its uploaded file. Publication translates the introduction, commentary, film titles and descriptions
 while preserving the board, poster paths, tiers and ordering.
+
+### Movie image search setup
+
+Search is optional; uploads still work without it. Obtain an **API Read Access
+Token** from [TMDB API settings](https://www.themoviedb.org/settings/api).
+Do not paste the token into chat, articles, or frontend code.
+
+- Local: create the git-ignored `.env.images` in the project root with
+  `TMDB_READ_ACCESS_TOKEN=your-token`, then restart `npm run cms`.
+- Online: after approval to configure/deploy, add `TMDB_READ_ACCESS_TOKEN` as a
+  **Secret** on the writing Cloudflare Worker, not a public variable or GitHub
+  Pages configuration. The token stays on the server; the reader site cannot
+  call the search endpoint. Local env files are not synced to other computers.
+
+The search supports movie titles, including Chinese and original titles; it
+does not search the general web or understand scene descriptions. Results show
+the original dimensions. Import uses the original image when it is at most 5 MB,
+otherwise tries a smaller version (780 px wide for posters, 1280 px for backdrops).
+Very large or invalid files are rejected. Each selected image is saved through
+the existing upload flow: locally on this computer, or in a public GitHub commit
+after confirmation online. Searching alone does not save anything or call OpenAI.
+
+TMDB requests require the owner session and CSRF token online; the local server
+accepts only the local studio origin. Movie names are sent to TMDB and thumbnail
+previews load from its image CDN. Source links and TMDB attribution are retained
+on articles using imported images. TMDB attribution is not a copyright license;
+only import images you are entitled to use. See the
+[TMDB FAQ](https://developer.themoviedb.org/docs/faq).
 
 ## Translate on Publish
 

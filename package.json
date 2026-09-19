@@ -8,7 +8,7 @@
   "scripts": {
     "build:pages": "GITHUB_PAGES=true vinext build && node build/prepare-pages.mjs",
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
-    "cms": "node --env-file-if-exists=.env.translation build/writing-server.mjs",
+    "cms": "node --env-file-if-exists=.env.translation --env-file-if-exists=.env.images build/writing-server.mjs",
     "auth:check": "WRANGLER_LOG_PATH=.wrangler/auth.log wrangler deploy --config auth/wrangler.jsonc --dry-run --outdir ../dist/auth",
     "auth:deploy": "WRANGLER_LOG_PATH=.wrangler/auth.log wrangler deploy --config auth/wrangler.jsonc",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",

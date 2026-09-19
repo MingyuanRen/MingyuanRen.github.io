@@ -2,7 +2,7 @@ import { tiers } from "../../lib/rankings.mjs";
 import "./ranking-board.css";
 
 export type TierId = "s" | "a" | "b" | "c" | "d";
-export type RankingItem = { id: string; title: string; image: string; tier: TierId | null; reason: string };
+export type RankingItem = { id: string; title: string; image: string; tier: TierId | null; reason: string; tmdbId?: number };
 export type RankingData = { version: 1; items: RankingItem[]; boardImage?: string; commentary?: string };
 export type ImageSources = Record<string, string>;
 

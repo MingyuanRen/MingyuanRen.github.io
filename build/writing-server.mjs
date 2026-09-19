@@ -9,12 +9,13 @@ import { translateEntry } from "../lib/translation-server.mjs";
 import { otherLanguagePath, publishedPair } from "../lib/bilingual-publish.mjs";
 import { readEntry, serializeEntry } from "../lib/writing.mjs";
 import { galleryPath, emptyGallery, parseGallery, serializeGallery } from "../lib/pictures.mjs";
+import { movieImages } from "../lib/movie-images.mjs";
 
 const revision = bytes => createHash("sha256").update(bytes).digest("hex");
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 
 // A local-only file adapter. It has no Git credentials and never runs git.
-export function writingServer(root, { translator = translateEntry, apiKey = process.env.OPENAI_API_KEY, model = process.env.OPENAI_TRANSLATION_MODEL || undefined } = {}) {
+export function writingServer(root, { translator = translateEntry, apiKey = process.env.OPENAI_API_KEY, model = process.env.OPENAI_TRANSLATION_MODEL || undefined, movieProvider = movieImages, movieToken = process.env.TMDB_READ_ACCESS_TOKEN } = {}) {
   root = resolve(root);
   let translating = false;
   function safePath(path, image = false) {
@@ -91,16 +92,18 @@ export function writingServer(root, { translator = translateEntry, apiKey = proc
       if (req.method === "GET" && url.pathname === "/api/post") return send(200, read(url.searchParams.get("path")));
       const translation = req.method === "POST" && url.pathname === "/api/translate";
       const publishing = req.method === "POST" && url.pathname === "/api/publish";
-      if (!translation && !publishing && (req.method !== "PUT" || !["/api/post", "/api/image", "/api/gallery"].includes(url.pathname))) return send(404, { error: "Not found" });
+      const movies = req.method === "POST" && url.pathname === "/api/movies";
+      if (!movies && !translation && !publishing && (req.method !== "PUT" || !["/api/post", "/api/image", "/api/gallery"].includes(url.pathname))) return send(404, { error: "Not found" });
       if (req.headers["content-type"] !== "application/json") fail("仅接受 JSON。", 415);
       const chunks = [];
       let size = 0;
       for await (const chunk of req) {
         size += chunk.length;
-        if (size > (translation ? 2000 : 7_100_000)) fail("文件过大。", 413);
+        if (size > (translation || movies ? 2000 : 7_100_000)) fail("文件过大。", 413);
         chunks.push(chunk);
       }
       const body = JSON.parse(Buffer.concat(chunks).toString());
+      if (movies) return send(200, await movieProvider(body, { token: movieToken }));
       if (url.pathname === "/api/gallery") {
         const source = serializeGallery(body.gallery);
         const previous = optionalRead(galleryPath);

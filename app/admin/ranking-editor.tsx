@@ -5,15 +5,18 @@ import { tiers } from "../../lib/rankings.mjs";
 import type { ImageSources, RankingData, RankingItem, TierId } from "../components/ranking-board";
 import "../components/ranking-board.css";
 import "./ranking-editor.css";
+import MoviePicker, { type Movie, type MovieImage, type MovieRequest, type MovieResult } from "./movie-picker";
 
 export type { RankingData, RankingItem, TierId } from "../components/ranking-board";
 const CARD_TYPE = "application/x-mingyuan-ranking-card";
 const MAX_ITEMS = 40;
 
-export default function RankingEditor({ value, onChange, onUpload, disabled = false, imageSources = {} }: {
+export default function RankingEditor({ value, onChange, onUpload, onMovieRequest, onImport, disabled = false, imageSources = {} }: {
   value: RankingData;
   onChange(value: RankingData): void;
   onUpload(files: File[]): Promise<Array<{ image: string; title: string }>>;
+  onMovieRequest(input: MovieRequest): Promise<MovieResult>;
+  onImport(movie: Movie, image: MovieImage): Promise<{ image: string; title: string } | null>;
   disabled?: boolean;
   imageSources?: ImageSources;
 }) {
@@ -22,6 +25,7 @@ export default function RankingEditor({ value, onChange, onUpload, disabled = fa
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [dragging, setDragging] = useState<string | null>(null);
+  const [finding, setFinding] = useState(false);
   const locked = disabled || uploading;
   const items = value.items;
   const ordered = [...tiers.flatMap(tier => items.filter(item => item.tier === tier.id)), ...items.filter(item => item.tier === null)];
@@ -100,7 +104,18 @@ export default function RankingEditor({ value, onChange, onUpload, disabled = fa
   }
 
   return <section className="ranking-editor" aria-label="Movie ranking builder" onDragOver={event => event.preventDefault()} onDrop={event => event.preventDefault()}>
-    <p className="writer-help">Upload posters, then drag them into the five rows. Drop onto a poster to place yours before it. On a phone or keyboard, use the tier and order controls below.</p>
+    <p className="writer-help">Find or upload images, then drag them into the five rows. Drop onto a poster to place yours before it. On a phone or keyboard, use the tier and order controls below.</p>
+    <button type="button" className="ranking-find" disabled={locked} aria-expanded={finding} onClick={() => setFinding(!finding)}>{finding ? "Close image search" : "Find movie images"}</button>
+    {finding && <MoviePicker request={onMovieRequest} disabled={locked || items.length >= MAX_ITEMS} onChoose={async (movie, image) => {
+      if (locked || items.length >= MAX_ITEMS) return false;
+      setUploading(true);
+      try {
+        const imported = await onImport(movie, image);
+        if (!imported) return false;
+        change([...items, { id: crypto.randomUUID(), ...imported, tmdbId: movie.id, tier: null, reason: "" }]);
+        setStatus(`${movie.title} added to Unranked.`); return true;
+      } finally { setUploading(false); }
+    }} />}
     <div className="ranking-upload" onDragOver={event => { event.preventDefault(); event.dataTransfer.dropEffect = locked ? "none" : "copy"; }}
       onDrop={event => { event.preventDefault(); event.stopPropagation(); void upload(Array.from(event.dataTransfer.files)); }}>
       <button type="button" disabled={locked || items.length >= MAX_ITEMS} onClick={() => fileInput.current?.click()}>{uploading ? "Uploading posters…" : "Upload film posters"}</button>
