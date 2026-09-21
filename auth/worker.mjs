@@ -1,5 +1,6 @@
 import { allowedRequest } from "./policy.mjs";
 import { movieImages } from "../lib/movie-images.mjs";
+import { validRankingImage } from "../lib/rankings.mjs";
 
 const SITE = "https://mingyuanren.github.io";
 const REPO = "/repos/MingyuanRen/MingyuanRen.github.io";
@@ -200,7 +201,7 @@ export async function handleRequest(request, env, fetcher = fetch) {
   if (request.method !== "GET" && request.method !== "HEAD") return json({ error: "Method not allowed." }, 405);
   // Reuse the deployed static editor. Never forward browser cookies or headers
   // to Pages; credentials and OAuth endpoints are handled above on this origin.
-  if (url.pathname === "/admin" || url.pathname === "/admin/" || url.pathname === "/tmdb.svg" || /^\/_next\/static\/[A-Za-z0-9_./-]+$/.test(url.pathname) || /^\/uploads\/[a-f0-9-]+\.(png|jpg|gif|webp)$/.test(url.pathname)) {
+  if (url.pathname === "/admin" || url.pathname === "/admin/" || url.pathname === "/tmdb.svg" || /^\/_next\/static\/[A-Za-z0-9_./-]+$/.test(url.pathname) || validRankingImage(url.pathname)) {
     const path = url.pathname.startsWith("/admin") ? "/admin/" : url.pathname;
     const upstream = await fetcher(SITE + path, { method: "GET", redirect: "manual" });
     if (upstream.status >= 300 && upstream.status < 400) fail(502, "Unexpected editor redirect.");

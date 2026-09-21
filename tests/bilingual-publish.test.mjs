@@ -63,6 +63,35 @@ test("translation failure preserves published originals and returns a visible er
   assert.equal(readFileSync(join(root, original.path), "utf8"), original.source);
 });
 
+test("publication cannot revive a trashed translation or start a paid request until restored", async t => {
+  let calls = 0;
+  const { root, request } = await localFixture(t, async (...args) => { calls++; return translate(...args); });
+  const trashed = serializeEntry({ ...entry, language: "en", trashed: true }, true);
+  writeFileSync(join(root, trashed.path), trashed.source);
+  const result = await request(original);
+  assert.equal(result.status, 409); assert.match((await result.json()).error, /Restore/);
+  assert.equal(calls, 0);
+  assert.equal(readFileSync(join(root, trashed.path), "utf8"), trashed.source);
+});
+
+test("online publishing refuses existing trashed versions before dispatch or translation", async () => {
+  const trashed = serializeEntry({ ...entry, language: "en", trashed: true }, true);
+  const current = { type: "file", encoding: "base64", content: encodedText(trashed.source), sha: "a".repeat(40) };
+  let dispatches = 0, paid = 0;
+  const adapter = githubWriter("github_pat_test", async (url, options) => {
+    if (options.method === "POST") { dispatches++; return json({}); }
+    return url.includes(".en.md") ? json(current) : json({}, 404);
+  });
+  await assert.rejects(adapter.publish(original.path, original.source), /Restore/);
+  assert.equal(dispatches, 0);
+  await assert.rejects(publishGithub({ ...original, token: "test-only", targetSha: current.sha, translator: async () => { paid++; return translate(original.source, original.path); }, fetcher: async url => {
+    if (url.includes("/git/ref/")) return json({ object: { sha: "head" } });
+    if (url.includes("/git/commits/")) return json({ tree: { sha: "tree" } });
+    return url.includes(".en.md") ? json(current) : json({}, 404);
+  } }), /Restore/);
+  assert.equal(paid, 0);
+});
+
 test("concurrent edits and duplicate publication requests cannot overwrite work or start another paid call", async t => {
   let release; let started;
   const ready = new Promise(resolve => { started = resolve; });

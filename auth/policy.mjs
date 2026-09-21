@@ -10,6 +10,7 @@ const reject = () => { throw Object.assign(new Error("This operation is not avai
 export function allowedRequest(input) {
   if (!input || !["GET", "PUT", "POST"].includes(input.method) || typeof input.endpoint !== "string") reject();
   const { method, endpoint, body } = input;
+  if (method === "GET" && /^\/repos\/MingyuanRen\/MingyuanRen\.github\.io\/actions\/runs\/[1-9][0-9]*\/jobs\?per_page=100$/.test(endpoint) && body === undefined) return input;
   if (method === "GET" && ["/user", repo].includes(endpoint) && body === undefined) return input;
   if (method === "GET" && /^\/repos\/MingyuanRen\/MingyuanRen\.github\.io\/actions\/workflows\/(publish|translate)\.yml\/runs\?event=workflow_dispatch&branch=main&per_page=100$/.test(endpoint) && body === undefined) return input;
   const prefix = repo + "/contents/";
@@ -19,7 +20,7 @@ export function allowedRequest(input) {
     const canonical = prefix + path.split("/").map(encodeURIComponent).join("/");
     const file = validPostPath(path) || path === galleryPath;
     if (method === "GET" && endpoint === canonical + "?ref=main" && body === undefined &&
-      (file || ["content/engineering", "content/essays", "content/rankings"].includes(path))) return input;
+      (file || ["content/engineering", "content/essays", "content/rankings", "site-public/uploads"].includes(path))) return input;
     if (method !== "PUT" || endpoint !== canonical || (!file && !validUploadPath(path)) || !body ||
       Object.keys(body).some(k => !["branch", "message", "content", "sha"].includes(k)) ||
       body.branch !== "main" || typeof body.message !== "string" || body.message.length > 300 ||

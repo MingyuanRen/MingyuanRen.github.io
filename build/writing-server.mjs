@@ -79,6 +79,17 @@ export function writingServer(root, { translator = translateEntry, apiKey = proc
     }
     try {
       const url = new URL(req.url, "http://127.0.0.1");
+      if (req.method === "GET" && url.pathname === "/api/images") {
+        const folder = join(root, "site-public", "uploads");
+        const images = readdirSync(folder).filter(name => validUploadPath("site-public/uploads/" + name)).flatMap(name => {
+          try {
+            const path = "site-public/uploads/" + name;
+            const stat = lstatSync(safePath(path, true));
+            return stat.isFile() ? [{ image: "/uploads/" + name, title: name }] : [];
+          } catch { return []; }
+        });
+        return send(200, { images, truncated: false });
+      }
       if (req.method === "GET" && url.pathname === "/api/gallery") {
         const file = optionalRead(galleryPath);
         return send(200, file ? { gallery: parseGallery(file.source), sha: file.sha } : { gallery: emptyGallery() });
@@ -118,6 +129,8 @@ export function writingServer(root, { translator = translateEntry, apiKey = proc
         const targetPath = otherLanguagePath(body.path);
         const beforeSource = optionalRead(body.path);
         const beforeTarget = optionalRead(targetPath);
+        if (beforeSource && readEntry(beforeSource.source, body.path).trashed) fail("Restore this article from Trash before publishing.", 409);
+        if (beforeTarget && readEntry(beforeTarget.source, targetPath).trashed) fail("Restore the other language version from Trash before publishing.", 409);
         if ((beforeSource?.sha || "") !== (body.sha || "")) fail("This article changed elsewhere. Reopen the latest version before publishing.", 409);
         translating = true;
         try {

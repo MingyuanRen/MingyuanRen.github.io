@@ -12,15 +12,23 @@ import "./writing.css";
 import PictureEditor from "./picture-editor";
 import type { Gallery } from "../components/picture-gallery";
 import SignInCard from "./sign-in-card";
+import { loadLibrary, describeFile, changeTrashState, changePresentation } from "../../lib/writing-library.mjs";
+import { otherLanguagePath } from "../../lib/bilingual-publish.mjs";
+import { comparePosts } from "../../lib/post-order.mjs";
+import ImageLibrary, { type LibraryImage } from "./image-library";
+import BrowserBackups from "./browser-backups";
+import DisplayOrder from "./display-order";
 
-type Entry = { title: string; section: string; slug: string; language: string; date: string; description: string; body: string; draft: boolean; format?: "moment"; ranking?: RankingData };
-type FileEntry = { path: string; sha: string };
+type Entry = { title: string; section: string; slug: string; language: string; date: string; description: string; body: string; draft: boolean; trashed?: boolean; format?: "moment"; ranking?: RankingData; pinned?: boolean; order?: number };
+type FileEntry = { path: string; sha: string; title?: string; language?: string; state?: string; images?: LibraryImage[]; pinned?: boolean; order?: number };
+type Progress = { stage: string; label: string; url?: string };
 type Writer = {
   connect(): Promise<string>; list(): Promise<FileEntry[]>;
   read(path: string): Promise<{ source: string; sha: string }>;
   save(path: string, source: string, sha?: string): Promise<{ sha: string }>;
   upload(path: string, bytes: Uint8Array): Promise<string>; disconnect(): void;
-  publish(path: string, source: string, sha?: string): Promise<{ files: Array<{ path: string; source: string; sha: string }> }>;
+  publish(path: string, source: string, sha?: string, onProgress?: (value: Progress) => void): Promise<{ files: Array<{ path: string; source: string; sha: string }> }>;
+  images(): Promise<{ images: LibraryImage[]; truncated?: boolean }>;
   readGallery(): Promise<{ gallery: Gallery; sha?: string }>;
   saveGallery(gallery: Gallery, sha?: string): Promise<{ sha: string }>;
   logout?(): Promise<void>;
@@ -57,11 +65,17 @@ export default function Editor() {
   const [preferredLanguage, setPreferredLanguage] = useState("zh");
   const [connected, setConnected] = useState(false);
   const [files, setFiles] = useState<FileEntry[]>([]);
+  const [shelf, setShelf] = useState("drafts");
+  const [trashConfirm, setTrashConfirm] = useState(false);
+  const [trashBoth, setTrashBoth] = useState(true);
   const [entry, setEntry] = useState<Entry>({ ...blank(), date: "" });
   const [opened, setOpened] = useState<FileEntry | null>(null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [documentKey, setDocumentKey] = useState(0);
+  const [recentImages, setRecentImages] = useState<LibraryImage[]>([]);
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -70,6 +84,8 @@ export default function Editor() {
   const [imageSources, setImageSources] = useState<Record<string, string>>({});
   const objectUrls = useRef<string[]>([]);
   const categoryFiles = files.filter(file => file.path.startsWith("content/" + entry.section + "/"));
+  const visibleFiles = categoryFiles.filter(file => file.state === shelf).sort(comparePosts);
+  const sibling = opened ? files.find(file => file.path === otherLanguagePath(opened.path) && file.state !== "trash") : undefined;
   const moment = entry.format === "moment";
 
   useEffect(() => {
@@ -83,7 +99,7 @@ export default function Editor() {
     }
     if (mode !== "session") return () => { active = false; };
     const next = sessionWriter();
-    next.connect().then(() => next.list()).then(items => {
+    next.connect().then(() => loadLibrary(next)).then(items => {
       if (!active) { next.disconnect(); return; }
       writer.current = next; setGalleryWriter(next); setFiles(items); setConnected(true);
       let language = "zh";
@@ -114,7 +130,10 @@ export default function Editor() {
     operation.current = true;
     setBusy(true); setError(""); setNotice("");
     try { await action(); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : "Something went wrong. Your text is still here."); }
+    catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Something went wrong. Your text is still here.");
+      setProgress(current => current && ["preparing", "checking", "queued", "translating", "deploying"].includes(current.stage) ? { ...current, stage: "attention", label: "Not confirmed. Your writing remains here. Check the error before retrying." } : current);
+    }
     finally { setBusy(false); operation.current = false; }
   }
   async function connect() {
@@ -123,7 +142,7 @@ export default function Editor() {
       const next = localWriter();
       try {
         await next.connect();
-        const items = await next.list();
+        const items = await loadLibrary(next);
         writer.current = next; setGalleryWriter(next); setFiles(items); setConnected(true);
         let language = preferredLanguage;
         try { language = localStorage.getItem("writing-language") === "en" ? "en" : "zh"; } catch { /* Keep the in-memory choice. */ }
@@ -138,25 +157,34 @@ export default function Editor() {
       try { localStorage.setItem("writing-language", value); } catch { /* Keep the current choice in memory. */ }
     }
     setEntry(current => ({ ...current, [key]: value }));
-    setDirty(true); setSavedLink(""); setConfirmation(null);
+    setDirty(true); setSavedLink(""); setConfirmation(null); setTrashConfirm(false);
   }
   function canLeave() { return !busy && (!dirty || window.confirm("Discard unsaved changes? Download your Markdown first if you want to keep it.")); }
   function newArticle(section = entry.section) {
     if (!canLeave()) return;
+    setDocumentKey(key => key + 1); setProgress(null);
+    setTrashConfirm(false);
     setEntry(blank(section, preferredLanguage)); setOpened(null); setDirty(false); setPreview(false); setNotice(""); setError(""); setSavedLink(""); setConfirmation(null);
   }
   async function openArticle(path: string) {
     if (!canLeave()) return;
     await run(async () => {
       const file = await writer.current!.read(path);
-      setEntry(readEntry(file.source, path) as Entry);
+      const loaded = readEntry(file.source, path) as Entry;
+      setEntry(loaded); setTrashConfirm(false);
+      setDocumentKey(key => key + 1); setProgress(null);
+      setFiles(current => current.map(item => item.path === path ? describeFile(path, file.source, file.sha) : item));
       setOpened({ path, sha: file.sha }); setDirty(false); setPreview(false); setSavedLink(""); setConfirmation(null);
     });
   }
   async function save(draft: boolean) {
     setConfirmation(null);
+    setProgress(draft ? null : { stage: "preparing", label: "Preparing your article…" });
     await run(async () => {
-      let saving = withUrlName(entry);
+      const copy = draft && !!opened && !entry.draft;
+      let saving = withUrlName(copy ? { ...entry, slug: "", draft: true } : entry);
+      const savingSha = copy ? undefined : opened?.sha;
+      if (copy) setOpened(null);
       // Keep a stable URL even if translation fails, so retries do not create copies.
       setEntry(saving); setDirty(true); setSavedLink("");
       serializeEntry(saving, draft);
@@ -168,19 +196,26 @@ export default function Editor() {
       }
       const { path, source } = serializeEntry(saving, draft);
       if (draft) {
-        const result = await writer.current!.save(path, source, opened?.sha);
+        const result = await writer.current!.save(path, source, savingSha);
         setOpened({ path, sha: result.sha }); setEntry({ ...saving, draft: true }); setDirty(false);
-        setFiles(current => [...current.filter(file => file.path !== path), { path, sha: result.sha }]);
-        setNotice(mode === "local" ? "Draft saved locally. No translation, commit or deployment." : "Draft saved to the public repository. No translation requested.");
+        setFiles(current => [...current.filter(file => file.path !== path), describeFile(path, source, result.sha)]);
+        setShelf("drafts");
+        setNotice((copy ? "Saved a separate draft. The published article is unchanged. " : "") + (mode === "local" ? "Draft saved locally. No translation, commit or deployment." : "Draft saved to the public repository. No translation requested."));
         return;
       }
       setTranslating(true);
       try {
-        const result = await writer.current!.publish(path, source, opened?.sha);
+        let result;
+        try { result = await writer.current!.publish(path, source, opened?.sha, setProgress); }
+        catch (cause) {
+          setProgress(current => ({ ...current, stage: "attention", label: "Publication needs attention. Check the error and workflow before retrying; nothing is retried automatically." }));
+          throw cause;
+        }
         const original = result.files.find(file => file.path === path);
         if (!original || result.files.length !== 2) throw new Error("Could not verify both versions. Refresh the article list before retrying.");
         setEntry(readEntry(original.source, path) as Entry); setOpened({ path, sha: original.sha }); setDirty(false);
-        setFiles(current => [...current.filter(file => !result.files.some(saved => saved.path === file.path)), ...result.files.map(({ path, sha }) => ({ path, sha }))]);
+        setFiles(current => [...current.filter(file => !result.files.some(saved => saved.path === file.path)), ...result.files.map(({ path, source, sha }) => describeFile(path, source, sha))]);
+        setShelf("published");
         setNotice(mode === "local" ? "Published in 中文 and English locally. No GitHub commit or deployment." : "Published in 中文 and English. Both versions are ready to read.");
         setSavedLink("/posts/" + saving.section + "/" + encodeURIComponent(saving.slug) + "/" + saving.language + "/");
       } finally { setTranslating(false); }
@@ -196,6 +231,22 @@ export default function Editor() {
     if (mode !== "local") setConfirmation(draft ? "draft" : "publish");
     else void save(draft);
   }
+  async function changeTrash(trashed: boolean) {
+    if (!opened) return;
+    const targets = [opened, ...(trashed && trashBoth && sibling ? [sibling] : [])];
+    setTrashConfirm(false);
+    await run(async () => {
+      const result = await changeTrashState(writer.current!, targets, trashed);
+      setFiles(current => [...current.filter(file => !result.saved.some(saved => saved.path === file.path)), ...result.saved.map(file => describeFile(file.path, file.source, file.sha))]);
+      const current = result.saved.find(file => file.path === opened.path);
+      if (current) {
+        setEntry(readEntry(current.source, current.path) as Entry); setOpened({ path: current.path, sha: current.sha });
+        setDirty(false); setConfirmation(null); setSavedLink(""); setShelf(trashed ? "trash" : "drafts");
+      }
+      if (result.error) { setError(result.error); return; }
+      setNotice(trashed ? `Moved ${result.saved.length} version${result.saved.length === 1 ? "" : "s"} to Trash. Images are kept. ${mode === "local" ? "Local preview only." : "The website updates after deployment; Git history stays public."}` : "Restored to Drafts. Open it, edit, and publish when ready.");
+    });
+  }
   function download() {
     try {
       const { path, source } = serializeEntry(withUrlName(entry), true);
@@ -205,14 +256,39 @@ export default function Editor() {
       URL.revokeObjectURL(url);
     } catch (cause) { setError((cause as Error).message); }
   }
-  async function uploadAsset(file: File) {
+  async function loadImages() {
+    const result = await writer.current!.images();
+    const known = new Map([...files.flatMap(file => file.images || []), ...recentImages].map(item => [item.image, item]));
+    return { ...result, images: result.images.map(item => {
+      const tmdbId = Number(item.image.match(/^\/uploads\/tmdb-(\d+)-/)?.[1]);
+      return known.get(item.image) || { ...item, ...(tmdbId > 0 && tmdbId <= 2147483647 ? { tmdbId, title: `TMDB film ${tmdbId}` } : {}) };
+    }) };
+  }
+  function reuseInBody(image: LibraryImage) {
+    const credit = image.tmdbId ? `\n\n[Image source: TMDB](https://www.themoviedb.org/movie/${image.tmdbId})\n\n![TMDB](/tmdb.svg)\n\nThis product uses the TMDB API but is not endorsed or certified by TMDB.` : "";
+    update("body", entry.body + `\n\n![Image description](${image.image})${credit}\n`); setPreview(false);
+  }
+  async function saveDisplayOrder(value: { pinned: boolean; order?: number }) {
+    if (!opened || dirty) return;
+    if (mode !== "local" && !window.confirm("Save pin and order for both saved language versions? This commits metadata only and deploys the website. No translation.")) return;
+    await run(async () => {
+      const result = await changePresentation(writer.current!, [opened, ...(sibling ? [sibling] : [])], value);
+      setFiles(current => [...current.filter(file => !result.saved.some(saved => saved.path === file.path)), ...result.saved.map(file => describeFile(file.path, file.source, file.sha))]);
+      const saved = result.saved.find(file => file.path === opened.path);
+      if (saved) { setEntry(readEntry(saved.source, saved.path) as Entry); setOpened({ path: saved.path, sha: saved.sha }); }
+      if (result.error) setError(result.error);
+      else setNotice(mode === "local" ? "Display order saved locally. No translation or deployment." : "Display order committed. The website updates after deployment; no translation requested.");
+    });
+  }
+  async function uploadAsset(file: File, tmdbId?: number) {
     if (file.size > 5 * 1024 * 1024) throw new Error("Please choose an image smaller than 5 MB.");
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const path = "site-public/uploads/" + crypto.randomUUID() + "." + imageExtension(bytes);
+    const path = "site-public/uploads/" + (tmdbId ? `tmdb-${tmdbId}-` : "") + crypto.randomUUID() + "." + imageExtension(bytes);
     const url = await writer.current!.upload(path, bytes);
     const previewUrl = URL.createObjectURL(file);
     objectUrls.current.push(previewUrl);
     setImageSources(current => ({ ...current, [url]: previewUrl }));
+    setRecentImages(current => [...current, { image: url, title: file.name, ...(tmdbId ? { tmdbId } : {}) }]);
     return url;
   }
   async function upload(file: File) {
@@ -258,7 +334,8 @@ export default function Editor() {
       const bytes = fromBase64(result.content);
       const extension = imageExtension(bytes);
       const file = new File([bytes], `tmdb-${movie.id}.${extension}`, { type: extension === "jpg" ? "image/jpeg" : `image/${extension}` });
-      const saved = await uploadAsset(file);
+      const saved = await uploadAsset(file, movie.id);
+      setRecentImages(current => current.map(item => item.image === saved ? { ...item, title: movie.title } : item));
       setNotice(`${movie.title} added${result.resized ? " using a smaller TMDB image to fit the 5 MB limit" : " at original resolution"}.`);
       return { image: saved, title: movie.title };
     } finally { setBusy(false); }
@@ -302,17 +379,34 @@ export default function Editor() {
         </button>)}
       </div>
       <p className="writer-category-description">{categories.find(category => category.id === entry.section)?.description}</p>
-      {entry.section === "pictures" && galleryWriter ? <PictureEditor writer={galleryWriter} local={mode === "local"} imageSources={imageSources} onUpload={uploadAsset} onDirty={setDirty} onBusy={setBusy} /> : <>
+      <BrowserBackups entry={entry} opened={opened} dirty={dirty} enabled={!busy && entry.section !== "pictures" && !entry.trashed} documentKey={documentKey} onRestore={snapshot => {
+        if (!canLeave()) return;
+        setEntry(snapshot.entry); setOpened(snapshot.opened); setDocumentKey(key => key + 1); setDirty(true); setPreview(false); setProgress(null); setConfirmation(null); setTrashConfirm(false); setSavedLink(""); setError(""); setNotice("Browser backup recovered. Save to Drafts when ready; nothing has been published.");
+      }} />
+      {entry.section === "pictures" && galleryWriter ? <PictureEditor writer={galleryWriter} local={mode === "local"} imageSources={imageSources} onUpload={uploadAsset} onLoadImages={loadImages} onDirty={setDirty} onBusy={setBusy} /> : <>
       <div className="writer-library">
-        <details><summary>{entry.section === "essays" ? "Moments" : "Articles"} <span>({categoryFiles.length})</span></summary>
-          <div className="writer-file-list">
-            {categoryFiles.length === 0 ? <p className="writer-help">Nothing here yet.</p> : categoryFiles.map(file =>
-              <button key={file.path} disabled={busy} onClick={() => void openArticle(file.path)}>{file.path.replace("content/", "").replace(/\.md$/, "")}</button>)}
-            <button disabled={busy} onClick={() => void run(async () => setFiles(await writer.current!.list()))}>Refresh list</button>
-          </div>
-        </details>
+        <span>Library</span>
         <button disabled={busy} onClick={() => newArticle()}>New {entry.section === "essays" ? "moment" : entry.section === "rankings" ? "tier list" : "article"} +</button>
       </div>
+      <div className="writer-shelves" role="group" aria-label="Article library">
+        {[["drafts", "Drafts / 草稿箱"], ["published", "Published"], ["trash", "Trash / 回收站"], ...(categoryFiles.some(file => file.state === "unavailable") ? [["unavailable", "Unavailable"]] : [])].map(([id, label]) =>
+          <button key={id} disabled={busy} aria-pressed={shelf === id} onClick={() => setShelf(id)}>{label} ({categoryFiles.filter(file => file.state === id).length})</button>)}
+        <button disabled={busy} onClick={() => void run(async () => setFiles(await loadLibrary(writer.current!)))}>Refresh list</button>
+      </div>
+      <div className="writer-file-list" aria-label="Saved articles">
+        {!visibleFiles.length ? <p className="writer-help">{shelf === "drafts" ? "No drafts yet. Write below and save to Drafts." : "Nothing here yet."}</p> : visibleFiles.map(file =>
+          <button key={file.path} disabled={busy} aria-current={opened?.path === file.path ? "true" : undefined} onClick={() => void openArticle(file.path)}>
+            {file.title}<span>{file.language === "zh" ? "中文" : "English"}{file.pinned ? " · Pinned" : ""}{file.order !== undefined ? ` · #${file.order}` : ""}</span>
+          </button>)}
+      </div>
+      {opened && !entry.trashed && <DisplayOrder key={opened.path + opened.sha} pinned={entry.pinned} order={entry.order} disabled={busy || dirty} onSave={value => void saveDisplayOrder(value)} />}
+      {entry.trashed ? <section className="writer-trashed" aria-label="Trashed article">
+        <h2>{entry.title}</h2><p className="writer-help">This {entry.language === "zh" ? "中文" : "English"} version is in Trash and hidden from readers. Restore it to Drafts before editing or publishing.</p>
+        <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.body) }} />
+        {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} />}
+        <button className="writer-primary" disabled={busy} onClick={() => void changeTrash(false)}>Restore to Drafts</button>
+        <button disabled={busy} onClick={download}>Download .md</button>
+      </section> : <>
       <fieldset className="writer-form" disabled={busy}>
         <label className="writer-label writer-language">I write in<select value={entry.language} disabled={!!opened} onChange={event => update("language", event.target.value)}><option value="zh">中文</option><option value="en">English</option></select></label>
         {!moment && <label className="writer-label writer-title-label">Title<input className="writer-title" value={entry.title} placeholder={entry.ranking ? "What are we ranking?" : "Untitled"} onChange={event => update("title", event.target.value)} /></label>}
@@ -333,6 +427,7 @@ export default function Editor() {
           {!entry.ranking && <button onClick={() => imageInput.current?.click()}>Add image</button>}
           <input ref={imageInput} hidden type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }} />
         </div>
+        {!entry.ranking && <ImageLibrary load={loadImages} onChoose={reuseInBody} disabled={busy} imageSources={imageSources} />}
         {preview ? <article className="writer-preview">
           {!moment && <h2>{entry.title || "Untitled"}</h2>}
           <div className="post-meta">{entry.language === "zh" ? "中文" : "English"}</div>
@@ -346,23 +441,35 @@ export default function Editor() {
           </label>
           {entry.ranking && <>
             <h2 className="writer-step"><span>02</span> Make your ranking</h2>
-            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} onMovieRequest={movieRequest} onImport={importMovieImage} disabled={busy} imageSources={imageSources} />
+            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} onMovieRequest={movieRequest} onImport={importMovieImage} onLoadImages={loadImages} disabled={busy} imageSources={imageSources} />
             <button className="writer-export-image" onClick={() => void downloadRanking()}>Download ranking image ↓</button>
           </>}
         </>}
         {!entry.ranking && <p className="writer-help">{moment ? "No title needed. Write as little or as much as you like." : "# Heading · **bold** · [link](url) · code fences · lists · images"}</p>}
         <div className="writer-actions">
           <button className="writer-primary" onClick={() => requestSave(false)}>{translating ? "Translating & publishing…" : mode === "local" ? "Publish locally" : "Publish"}</button>
-          <button onClick={() => requestSave(true)}>Save draft</button>
+          <button onClick={() => requestSave(true)}>{opened && !entry.draft ? "Save as new draft" : "Save to Drafts"}</button>
           <button onClick={download}>Download .md</button>
+          {opened && <button onClick={() => { setTrashConfirm(true); setTrashBoth(true); setConfirmation(null); }}>Delete…</button>}
           <span className="writer-help" role="status">{translating ? "Creating both versions. Please keep this tab open." : busy ? "Saving…" : dirty ? "Unsaved changes" : opened ? entry.draft ? "Draft" : "Published" : ""}</span>
         </div>
         <p className="writer-help">Publish sends your text to OpenAI (GPT-5.6) and uses API credits to publish both 中文 and English. Republishing regenerates the other language, replacing its previous wording. Save draft does not translate.</p>
       </fieldset>
+      </>}
       <div ref={feedback}>
+        {progress && <section className="writer-progress" role="status" aria-label="Publication progress"><p>{progress.label}</p>{progress.url && <a href={progress.url} target="_blank" rel="noreferrer">View this publication run ↗</a>}</section>}
         {error && <p className="writer-error" role="alert">{error}{mode === "session" && <> <a href="/auth/login" target="_blank" rel="noreferrer">Sign in again in a new tab ↗</a></>}</p>}
         {notice && <p className="writer-notice" role="status">{notice}</p>}
       </div>
+      {trashConfirm && opened && <section className="writer-confirm" aria-label="Confirm moving to Trash">
+        <p>Move “{entry.title || "Untitled"}” ({entry.language === "zh" ? "中文" : "English"}) to Trash? It will be hidden from readers. You can restore it to Drafts. Uploaded images are kept.</p>
+        {dirty && <p>Unsaved edits are not included. Save to Drafts or download your Markdown first to keep them.</p>}
+        {sibling ? <label className="writer-trash-option"><input type="checkbox" checked={trashBoth} disabled={busy} onChange={event => setTrashBoth(event.target.checked)} /> Also move the {sibling.language === "zh" ? "中文" : "English"} version to Trash.</label> : <p className="writer-help">Only this saved language version will be changed.</p>}
+        {sibling && !trashBoth && <p>The other language version will keep its current status.</p>}
+        {mode !== "local" && <p className="writer-help">This updates the public repository. Content remains in Git history; this is not private erasure. Changes appear after deployment.</p>}
+        <button className="writer-primary" disabled={busy} onClick={() => void changeTrash(true)}>Move to Trash</button>
+        <button disabled={busy} onClick={() => setTrashConfirm(false)}>Cancel</button>
+      </section>}
       {confirmation && <section className="writer-confirm" aria-label="Confirm GitHub commit">
         <p>{confirmation === "draft" ? "Save this draft to the public GitHub repository? It will not appear on the website, but its source and history will be public." : "Translate and publish both versions? Your text is sent to OpenAI using API credits. The other language version will be regenerated. Both versions, uploaded images and Git history are public. Nothing is published if translation fails; uploaded images may remain."}</p>
         <button className="writer-primary" disabled={busy} onClick={() => void save(confirmation === "draft")}>Confirm {confirmation === "draft" ? "draft save" : "publish"}</button>

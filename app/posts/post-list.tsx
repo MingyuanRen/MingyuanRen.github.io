@@ -1,4 +1,5 @@
 import type { PostSummary } from "./content";
+import { comparePosts } from "../../lib/post-order.mjs";
 
 export default function PostList({ posts, language }: { posts: PostSummary[]; language?: "zh" | "en" }) {
   // Prefer the selected language, but keep untranslated originals discoverable.
@@ -9,7 +10,7 @@ export default function PostList({ posts, language }: { posts: PostSummary[]; la
   if (!grouped.size) return null;
   return (
     <ul className="post-list">
-      {[...grouped.values()].map(post => (
+      {[...grouped.values()].sort(comparePosts).map(post => (
         <li key={post.slug} lang={post.language === "zh" ? "zh-CN" : "en"}>
           {post.format === "moment" ? <div className="moment-entry">
             <a className="post-meta" href={post.href} aria-label={post.title}>{post.language === "zh" ? "中文" : "English"}</a>

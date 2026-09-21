@@ -1,7 +1,7 @@
 import { readFileSync, appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { repository, readEntry, serializeEntry } from "../lib/writing.mjs";
+import { repository, readEntry, serializeEntry, decodedText } from "../lib/writing.mjs";
 import { otherLanguagePath, publishedPair } from "../lib/bilingual-publish.mjs";
 import { translateEntry } from "../lib/translation-server.mjs";
 
@@ -26,6 +26,7 @@ export async function publishGithub({ path, source, sha = "", targetSha = "", to
   for (const [file, expected] of [[path, sha], [target, targetSha]]) {
     const current = await api("/contents/" + file.split("/").map(encodeURIComponent).join("/") + "?ref=" + head);
     if ((current?.sha || "") !== expected || (current && current.type !== "file")) throw new Error("An article changed elsewhere. Reopen the latest version before publishing.");
+    if (current && (current.encoding !== "base64" || readEntry(decodedText(current.content), file).trashed)) throw new Error("Restore the saved article versions from Trash before publishing.");
   }
   const translated = await translator(original.source, path, { apiKey, model, fetcher });
   const pair = publishedPair(original.source, path, translated);

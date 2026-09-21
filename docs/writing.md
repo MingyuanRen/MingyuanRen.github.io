@@ -57,18 +57,81 @@ Stop this service when you finish.
    Date, optional summary and URL name live under publication details.
    A URL name is generated on first save if left blank.
 3. Switch between **Write** and **Preview**. Raw HTML is displayed as text.
-4. **Save draft** saves only the version you are writing, without a translation call.
+4. **Save to Drafts** saves only the version you are writing, without a translation call.
 5. **Publish locally** translates the current text and publishes both versions in
    the local preview. No prior save or separate Generate action is needed.
-6. Reopen it under **Articles**. Saved URLs are locked to avoid orphaned copies.
+6. Open **Drafts / 草稿箱**, choose the saved title and language, then edit and
+   **Publish**. Saved URLs are locked to avoid orphaned copies. **Published**
+   lists published versions separately. **Refresh list** loads changes made on
+   another computer. If a file cannot be read, it appears under **Unavailable**.
 7. Readers open the article and switch between **中文 / English**. No reader action
    calls OpenAI. Republishing regenerates the other language from the version you
    are editing, replacing its previous wording (including manual translation edits).
 
-There is no automatic draft saving. Unsaved changes stay in memory and the editor
-warns before leaving. Save regularly or use **Download .md** as a local backup.
+Article text and tier-list edits are automatically backed up in this browser
+after a short pause and when leaving the editor. **Browser backups → Recover**
+opens a separate editing session; it does not publish. Backups retain the saved
+revision, so changes on another computer cannot silently be overwritten.
+These backups are not encrypted, not synced across browsers/computers, and are
+lost if browser data is cleared. Storage failures are shown; up to 20 backups
+are kept without automatically removing your writing. Use **Save to Drafts**
+or **Download .md** for durable copies. Picture collections still use their
+explicit Save collection button. The editor continues warning before leaving.
 The downloadable backup is marked as a draft regardless of the online version.
 Uploaded images are saved immediately; on GitHub this is a separate public commit.
+
+### Line breaks, drafts, and deleting posts
+
+A single Enter now displays a line break in both Preview and reader pages.
+A blank line starts a new paragraph. Markdown headings, lists and code blocks
+still work. Existing saved articles retain their source line breaks automatically
+once this rendering update is deployed; soft visual wrapping in the text area
+is not a stored line break.
+
+On an already published article, **Save as new draft** creates a separate draft
+with a new URL name, leaving the published original unchanged. Publishing that
+copy creates a new article; reopen the original under Published to update it.
+
+To delete, open a saved article and choose **Delete… → Move to Trash**. The
+confirmation names the language; if the other version exists, you can include
+it too (selected by default). Unsaved edits are not saved by deleting: save or
+download them first. Trash hides selected versions from readers but keeps them
+recoverable; **Restore to Drafts** restores only the selected version and never
+publishes automatically. Restore both versions before bilingual publishing if
+both are trashed. Nothing here calls translation or deletes uploaded images.
+
+Online changes create public Git commits and take effect after deployment.
+Trash is not private erasure: the source, images and Git history remain public.
+Each selected version is revision-checked; bilingual trash changes use separate
+saves. If a request fails partway through, refresh the library to see what was
+saved before retrying. Local actions never commit or deploy.
+
+## Reusing images, ordering, and publication status
+
+**Choose existing image** is available in article bodies, the tier-list builder,
+and Picture. Browse thumbnails, filter by a known film title or filename, and
+select an image without another upload or API charge. Files uploaded from
+another browser appear after Refresh images; GitHub folder listings are limited
+to the first 1,000 entries and the UI warns when that limit is reached. Newly
+imported TMDB filenames retain their film ID; saved older ranking entries also
+supply image titles and TMDB attribution. Unsaved historical uploads may only
+have their UUID filename. Image files remain public online, including unused ones.
+
+Open a saved article and expand **Pin & display order**. Pinned posts come first,
+then lower numbers; blank restores the normal date/slug ordering without showing
+dates. **Save display order** updates both saved, non-trashed language versions
+without translating or changing their draft/published state. Save writing edits
+first. Online this creates commits and deploys; revision/partial-save safeguards
+are the same as Trash.
+
+During online Publish, the studio reports queued/preparing, translating/saving,
+saved/building/deploying, and deployment completed from the matching GitHub
+workflow and its jobs. A link opens that exact run. No fake percentages or
+automatic dispatch retries are used. If translation succeeded but deployment
+failed, the status distinguishes saved writing from a live website. Local
+publication is explicitly marked local, never live online. Keep the tab open
+during publication; after a reload or timeout check GitHub Actions before
+retrying, as a paid workflow may still be running.
 
 ## Picture collection
 

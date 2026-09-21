@@ -5,6 +5,7 @@ import PictureGallery, { type Gallery, type Picture } from "../components/pictur
 import { emptyGallery, serializeGallery } from "../../lib/pictures.mjs";
 import { imageExtension } from "../../lib/writing.mjs";
 import "./picture-editor.css";
+import ImageLibrary, { type LibraryImage } from "./image-library";
 
 type GalleryWriter = {
   readGallery(): Promise<{ gallery: Gallery; sha?: string }>;
@@ -13,9 +14,10 @@ type GalleryWriter = {
 type Props = {
   writer: GalleryWriter; local: boolean; imageSources: Record<string, string>;
   onUpload(file: File): Promise<string>; onDirty(value: boolean): void; onBusy(value: boolean): void;
+  onLoadImages(): Promise<{ images: LibraryImage[]; truncated?: boolean }>;
 };
 
-export default function PictureEditor({ writer, local, imageSources, onUpload, onDirty, onBusy }: Props) {
+export default function PictureEditor({ writer, local, imageSources, onUpload, onLoadImages, onDirty, onBusy }: Props) {
   const [gallery, setGallery] = useState<Gallery>(emptyGallery());
   const [sha, setSha] = useState<string>();
   const [loaded, setLoaded] = useState(false);
@@ -102,6 +104,10 @@ export default function PictureEditor({ writer, local, imageSources, onUpload, o
         <span className="writer-help">{gallery.items.length} pictures</span>
       </div>
       {preview ? <PictureGallery items={gallery.items} imageSources={imageSources} /> : <>
+        <ImageLibrary load={onLoadImages} imageSources={imageSources} disabled={busy || !loaded || gallery.items.length >= 200} onChoose={image => {
+          if (gallery.items.length >= 200) return;
+          change([...gallery.items, { id: crypto.randomUUID(), image: image.image, alt: image.title, caption: "", ...(image.tmdbId ? { tmdbId: image.tmdbId } : {}) }]);
+        }} />
         <div className={"picture-upload" + (dragging ? " is-dragging" : "")}
           onDragOver={event => { event.preventDefault(); if (!busy && loaded) setDragging(true); }}
           onDragLeave={() => setDragging(false)}

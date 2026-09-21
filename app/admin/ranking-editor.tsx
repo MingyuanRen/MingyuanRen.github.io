@@ -6,17 +6,19 @@ import type { ImageSources, RankingData, RankingItem, TierId } from "../componen
 import "../components/ranking-board.css";
 import "./ranking-editor.css";
 import MoviePicker, { type Movie, type MovieImage, type MovieRequest, type MovieResult } from "./movie-picker";
+import ImageLibrary, { type LibraryImage } from "./image-library";
 
 export type { RankingData, RankingItem, TierId } from "../components/ranking-board";
 const CARD_TYPE = "application/x-mingyuan-ranking-card";
 const MAX_ITEMS = 40;
 
-export default function RankingEditor({ value, onChange, onUpload, onMovieRequest, onImport, disabled = false, imageSources = {} }: {
+export default function RankingEditor({ value, onChange, onUpload, onMovieRequest, onImport, onLoadImages, disabled = false, imageSources = {} }: {
   value: RankingData;
   onChange(value: RankingData): void;
   onUpload(files: File[]): Promise<Array<{ image: string; title: string }>>;
   onMovieRequest(input: MovieRequest): Promise<MovieResult>;
   onImport(movie: Movie, image: MovieImage): Promise<{ image: string; title: string } | null>;
+  onLoadImages?(): Promise<{ images: LibraryImage[]; truncated?: boolean }>;
   disabled?: boolean;
   imageSources?: ImageSources;
 }) {
@@ -105,6 +107,11 @@ export default function RankingEditor({ value, onChange, onUpload, onMovieReques
 
   return <section className="ranking-editor" aria-label="Movie ranking builder" onDragOver={event => event.preventDefault()} onDrop={event => event.preventDefault()}>
     <p className="writer-help">Find or upload images, then drag them into the five rows. Drop onto a poster to place yours before it. On a phone or keyboard, use the tier and order controls below.</p>
+    {onLoadImages && <ImageLibrary load={onLoadImages} disabled={locked || items.length >= MAX_ITEMS} imageSources={imageSources} onChoose={image => {
+      if (locked || items.length >= MAX_ITEMS) return;
+      change([...items, { id: crypto.randomUUID(), ...image, tier: null, reason: "" }]);
+      setStatus("Image reused in Unranked. No upload needed.");
+    }} />}
     <button type="button" className="ranking-find" disabled={locked} aria-expanded={finding} onClick={() => setFinding(!finding)}>{finding ? "Close image search" : "Find movie images"}</button>
     {finding && <MoviePicker request={onMovieRequest} disabled={locked || items.length >= MAX_ITEMS} onChoose={async (movie, image) => {
       if (locked || items.length >= MAX_ITEMS) return false;
