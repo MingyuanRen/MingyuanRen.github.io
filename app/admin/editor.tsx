@@ -344,17 +344,6 @@ export default function Editor() {
     setEntry(current => ({ ...current, ranking: { ...ranking, boardImage: undefined } }));
     setDirty(true); setSavedLink(""); setConfirmation(null);
   }
-  async function downloadRanking() {
-    await run(async () => {
-      if (!entry.ranking?.items.some(item => item.tier)) throw new Error("Place at least one poster in a tier first.");
-      const blob = await renderRankingPng(entry.ranking, imageSources);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url; link.download = (entry.slug || "my-tier-list") + ".png"; link.click();
-      URL.revokeObjectURL(url);
-      setNotice("Ranking image downloaded. Nothing was published.");
-    });
-  }
 
   return <main className="page writer-page">
     <div className="page-toolbar">
@@ -403,7 +392,7 @@ export default function Editor() {
       {entry.trashed ? <section className="writer-trashed" aria-label="Trashed article">
         <h2>{entry.title}</h2><p className="writer-help">This {entry.language === "zh" ? "中文" : "English"} version is in Trash and hidden from readers. Restore it to Drafts before editing or publishing.</p>
         <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.body) }} />
-        {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} />}
+        {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} title={entry.title} />}
         <button className="writer-primary" disabled={busy} onClick={() => void changeTrash(false)}>Restore to Drafts</button>
         <button disabled={busy} onClick={download}>Download .md</button>
       </section> : <>
@@ -432,7 +421,7 @@ export default function Editor() {
           {!moment && <h2>{entry.title || "Untitled"}</h2>}
           <div className="post-meta">{entry.language === "zh" ? "中文" : "English"}</div>
           {entry.body ? <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.body) }} /> : <p className="writer-help">Your preview will appear here.</p>}
-          {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} />}
+          {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} title={entry.title} />}
         </article> : <>
           {entry.ranking && <h2 className="writer-step"><span>01</span> Set the scene</h2>}
           <label className={"writer-body-label" + (entry.ranking ? " writer-introduction" : moment ? " writer-moment-body" : "")}>
@@ -441,8 +430,7 @@ export default function Editor() {
           </label>
           {entry.ranking && <>
             <h2 className="writer-step"><span>02</span> Make your ranking</h2>
-            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} onMovieRequest={movieRequest} onImport={importMovieImage} onLoadImages={loadImages} disabled={busy} imageSources={imageSources} />
-            <button className="writer-export-image" onClick={() => void downloadRanking()}>Download ranking image ↓</button>
+            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} onMovieRequest={movieRequest} onImport={importMovieImage} onLoadImages={loadImages} disabled={busy} imageSources={imageSources} title={entry.title} language={entry.language} />
           </>}
         </>}
         {!entry.ranking && <p className="writer-help">{moment ? "No title needed. Write as little or as much as you like." : "# Heading · **bold** · [link](url) · code fences · lists · images"}</p>}

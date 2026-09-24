@@ -7,12 +7,13 @@ import "../components/ranking-board.css";
 import "./ranking-editor.css";
 import MoviePicker, { type Movie, type MovieImage, type MovieRequest, type MovieResult } from "./movie-picker";
 import ImageLibrary, { type LibraryImage } from "./image-library";
+import RankingExport from "../components/ranking-export";
 
 export type { RankingData, RankingItem, TierId } from "../components/ranking-board";
 const CARD_TYPE = "application/x-mingyuan-ranking-card";
 const MAX_ITEMS = 40;
 
-export default function RankingEditor({ value, onChange, onUpload, onMovieRequest, onImport, onLoadImages, disabled = false, imageSources = {} }: {
+export default function RankingEditor({ value, onChange, onUpload, onMovieRequest, onImport, onLoadImages, disabled = false, imageSources = {}, title = "", language = "en" }: {
   value: RankingData;
   onChange(value: RankingData): void;
   onUpload(files: File[]): Promise<Array<{ image: string; title: string }>>;
@@ -21,6 +22,7 @@ export default function RankingEditor({ value, onChange, onUpload, onMovieReques
   onLoadImages?(): Promise<{ images: LibraryImage[]; truncated?: boolean }>;
   disabled?: boolean;
   imageSources?: ImageSources;
+  title?: string; language?: string;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -143,6 +145,7 @@ export default function RankingEditor({ value, onChange, onUpload, onMovieReques
       </div>)}
     </div>
     {error && <p className="writer-error" role="alert">{error}</p>}
+    <RankingExport ranking={value} title={title} imageSources={imageSources} language={language} disabled={locked} />
     <p className="ranking-status writer-help" role="status">{status || (items.some(item => item.tier === null) ? "Assign every poster a tier before publishing." : "The finished ranking will appear between your introduction and reasons.")}</p>
     <label className="writer-body-label ranking-commentary-input">
       <span className="writer-sr-only">Text below the ranking</span>

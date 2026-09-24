@@ -1,0 +1,9 @@
+.ranking-export { margin: 18px 0 30px; font-size: 13px; letter-spacing: normal; }
+.ranking-export-actions { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.ranking-export-actions label { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.ranking-export-actions input { width: auto; accent-color: var(--text); }
+.ranking-export-actions button { background: none; border: 0; border-bottom: 1px solid var(--line); padding: 8px 0; font: inherit; color: var(--text); cursor: pointer; }
+.ranking-export-actions button:disabled { opacity: .4; cursor: default; }
+.ranking-export-help { color: var(--muted); font-size: 12px; line-height: 1.7; margin-top: 10px; }
+.ranking-export a { text-decoration: underline; text-underline-offset: 3px; }
+.ranking-export :focus-visible { outline: 2px solid var(--muted); outline-offset: 4px; }

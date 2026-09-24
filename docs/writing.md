@@ -154,6 +154,43 @@ prevent overwriting a collection edited on another computer.
 
 ## Moments and tier lists
 
+### Exporting and reading
+
+**Export PNG** below a tier board downloads a high-resolution image on your
+device. It is available while writing and on published ranking pages. Select
+**Include reviews** to append the text below the board and each ranked film's
+name, tier and review. Markdown is converted to plain text; embedded review
+images are not exported. Unranked items are omitted. Export does not save,
+publish, upload, or call AI. A failed poster load stops export with an error,
+rather than silently leaving a blank. Very long reviews must be shortened or
+exported as the board alone. Long images may use a lower scale to stay within
+browser canvas limits. A download/open link remains available if the browser
+does not start the download automatically. TMDB images retain a credit footer.
+
+In **Picture**, click a frame to open the full-window viewer. Use the arrows,
+Left/Right keys or a horizontal swipe to move through the collection. **Close**
+or Esc returns to the same gallery item. **Original** opens the unmodified file;
+captions and source links remain visible. This also works in the editor preview.
+
+### Sharing and RSS
+
+Published pages provide Open Graph and Twitter card metadata with a canonical
+URL, title, short description and image. Articles use their summary or a plain
+text excerpt. Ranking pages prefer the saved board image; otherwise the first
+ranking image or uploaded body image is used, with your avatar as fallback.
+Individual social apps decide how to display/cache a preview; no new image is
+uploaded and no AI image generation is involved.
+
+RSS links at the bottom of writing pages point to `/feed.xml` (中文) and
+`/feed-en.xml` (English). Paste the desired URL into an RSS reader. Each feed
+contains up to 50 published articles in that language, newest first, with a
+short excerpt and a link back to the article. Drafts and Trash never appear.
+Each translation is in its own feed; dates are feed metadata only and are not
+added to the website's visible design. Pictures are not included in the feeds.
+The Pages build emits static XML, so no live server or account is needed.
+
+### Writing formats
+
 **片刻 / Moments** is for a passing thought or a short paragraph. There is no
 required title: a short internal title is derived for links and metadata. Readers
 see paragraphs in the Moments feed and a clean text page, without dates. Dates

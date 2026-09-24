@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import PostList from "../posts/post-list";
 import type { PostSummary } from "../posts/content";
+import FeedLinks from "../components/feed-links";
 
 type Language = "zh" | "en";
 const key = "personal-language";
@@ -57,6 +58,7 @@ export default function PersonalView({ category, posts = [] }: { category?: "ess
           <a href="/personal/pictures/">Picture</a>
         </nav>
       </>}
+      <FeedLinks />
     </main>
   );
 }

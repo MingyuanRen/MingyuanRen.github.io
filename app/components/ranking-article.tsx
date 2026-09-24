@@ -4,9 +4,10 @@ import { tiers } from "../../lib/rankings.mjs";
 import { renderMarkdown } from "../../lib/markdown.mjs";
 import "./ranking-article.css";
 import TmdbCredit from "./tmdb-credit";
+import RankingExport from "./ranking-export";
 
-export default function RankingArticle({ ranking, preview = false, imageSources = {}, language = "zh" }: {
-  ranking: RankingData; preview?: boolean; imageSources?: Record<string, string>; language?: string;
+export default function RankingArticle({ ranking, preview = false, imageSources = {}, language = "zh", title = "" }: {
+  ranking: RankingData; preview?: boolean; imageSources?: Record<string, string>; language?: string; title?: string;
 }) {
   const ordered = tiers.flatMap(tier => ranking.items.filter(item => item.tier === tier.id).map(item => ({ ...item, rating: tier })));
   return <div className="ranking-article">
@@ -15,6 +16,7 @@ export default function RankingArticle({ ranking, preview = false, imageSources 
         <img src={ranking.boardImage} alt={language === "zh" ? "电影排名，从夯到拉；各项排名与理由见下文。" : "Movie tier list from best to worst. Rankings and reasons follow below."} />
       </a>
     </figure> : <RankingBoard ranking={ranking} imageSources={imageSources} language={language} />}
+    <RankingExport ranking={ranking} title={title} imageSources={imageSources} language={language} />
     {ranking.commentary?.trim() && <div className="prose ranking-commentary" dangerouslySetInnerHTML={{ __html: renderMarkdown(ranking.commentary) }} />}
     {ordered.length > 0 && <section className="ranking-reasons" aria-label={language === "zh" ? "作品" : "Films"}>
       {ordered.map((item, index) => <section key={item.id} className="ranking-reason">

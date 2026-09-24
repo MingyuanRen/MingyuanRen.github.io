@@ -1,8 +1,9 @@
 import PictureGallery from "../../components/picture-gallery";
 import { emptyGallery, parseGallery } from "../../../lib/pictures.mjs";
+import { pageMetadata } from "../../../lib/sharing.mjs";
 
 export const dynamic = "force-static";
-export const metadata = { title: "Picture — Mingyuan Ren" };
+export const metadata = pageMetadata({ title: "Picture — Mingyuan Ren", path: "/personal/pictures/", description: "Frames I want to keep." });
 const sources = import.meta.glob<string>("/content/pictures/gallery.json", { eager: true, query: "?raw", import: "default" });
 
 export default function Pictures() {
