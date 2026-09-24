@@ -1,8 +1,6 @@
-import { copyFile, mkdir, readFile, access, readdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, access, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import assert from "node:assert/strict";
-import { publishedPosts, sections } from "../lib/markdown.mjs";
-import { feeds, rssFeed } from "../lib/sharing.mjs";
 
 // vinext's trailingSlash export currently redirects before prerendering nested
 // routes. Export without it, then provide GitHub Pages directory-style URLs.
@@ -29,22 +27,8 @@ await Promise.all(["avatar.jpg", "favicon.jpg"].map(file => access(`dist/client/
 await access("dist/client/admin/index.html");
 await access("dist/client/personal/pictures/index.html");
 
-// vinext skips route handlers in its static export. Emit real XML assets for
-// GitHub Pages using the same renderer as the local GET routes.
-const sources = {};
-for (const section of sections) {
-  const directory = join("content", section);
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.isFile() && /\.(zh|en)\.md$/.test(entry.name)) {
-      const path = join(directory, entry.name);
-      sources[path] = await readFile(path, "utf8");
-    }
-  }
+// Fail the release if a stale feed or discovery link ever returns.
+for (const path of ["feed.xml", "feed-en.xml"]) {
+  await assert.rejects(access(join("dist/client", path)), { code: "ENOENT" });
 }
-const posts = publishedPosts(sources);
-for (const [language, path] of Object.entries(feeds)) {
-  const xml = rssFeed(posts, language);
-  const target = join("dist/client", path.slice(1));
-  await writeFile(target, xml);
-  assert.equal(await readFile(target, "utf8"), xml);
-}
+assert.doesNotMatch(home + personal, /application\/rss\+xml|feed(?:-en)?\.xml|feed-links/);

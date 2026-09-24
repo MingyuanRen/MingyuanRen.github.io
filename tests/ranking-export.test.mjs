@@ -3,6 +3,35 @@ import assert from "node:assert/strict";
 import { wrapLines, exportScale, exportFilename } from "../lib/export-layout.mjs";
 import { renderRankingPng } from "../lib/ranking-image.ts";
 
+test("ranking readers and previews see content without export tools; the admin builder keeps them", async () => {
+  const { createServer } = await import("vite");
+  const { default: react } = await import("@vitejs/plugin-react");
+  const { createElement } = await import("react");
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const server = await createServer({ configFile: false, appType: "custom", plugins: [react()], server: { middlewareMode: true, watch: null, ws: false } });
+  try {
+    const { default: RankingArticle } = await server.ssrLoadModule("/app/components/ranking-article.tsx");
+    const { default: RankingEditor } = await server.ssrLoadModule("/app/admin/ranking-editor.tsx");
+    const ranking = { version: 1, commentary: "A thought below the board", items: [{ id: "a", title: "Film", image: "/uploads/12345678-1234-1234-1234-123456789abc.jpg", tier: "s", reason: "A personal review" }] };
+    for (const language of ["zh", "en"]) {
+      for (const preview of [false, true]) {
+        for (const boardImage of [undefined, "/uploads/12345678-1234-1234-1234-123456789abc.png"]) {
+          const html = renderToStaticMarkup(createElement(RankingArticle, { ranking: { ...ranking, boardImage }, language, preview }));
+          assert.match(html, /ranking-article/);
+          assert.match(html, /A thought below the board/);
+          assert.match(html, /A personal review/);
+          assert.match(html, /夯/);
+          assert.doesNotMatch(html, /ranking-export|Export PNG|Include reviews|导出 PNG|附上短评|Download again/);
+        }
+      }
+      const editor = renderToStaticMarkup(createElement(RankingEditor, { value: ranking, language, title: "My films" }));
+      assert.match(editor, /ranking-export/);
+      assert.match(editor, language === "zh" ? /导出 PNG/ : /Export PNG/);
+      assert.match(editor, language === "zh" ? /附上短评/ : /Include reviews/);
+    }
+  } finally { await server.close(); }
+});
+
 test("export wraps Chinese, emoji and newlines without clipping and bounds huge canvases", () => {
   assert.deepEqual(wrapLines("你好😀\n\nWorld", 2, text => [...text].length), ["你好", "😀", "", "Wo", "rl", "d"]);
   assert.throws(() => wrapLines("a\nb\nc", 10, text => text.length, 2), /too long/);

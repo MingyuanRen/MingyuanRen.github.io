@@ -392,7 +392,7 @@ export default function Editor() {
       {entry.trashed ? <section className="writer-trashed" aria-label="Trashed article">
         <h2>{entry.title}</h2><p className="writer-help">This {entry.language === "zh" ? "中文" : "English"} version is in Trash and hidden from readers. Restore it to Drafts before editing or publishing.</p>
         <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.body) }} />
-        {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} title={entry.title} />}
+        {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} />}
         <button className="writer-primary" disabled={busy} onClick={() => void changeTrash(false)}>Restore to Drafts</button>
         <button disabled={busy} onClick={download}>Download .md</button>
       </section> : <>
@@ -421,7 +421,7 @@ export default function Editor() {
           {!moment && <h2>{entry.title || "Untitled"}</h2>}
           <div className="post-meta">{entry.language === "zh" ? "中文" : "English"}</div>
           {entry.body ? <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.body) }} /> : <p className="writer-help">Your preview will appear here.</p>}
-          {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} title={entry.title} />}
+          {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} />}
         </article> : <>
           {entry.ranking && <h2 className="writer-step"><span>01</span> Set the scene</h2>}
           <label className={"writer-body-label" + (entry.ranking ? " writer-introduction" : moment ? " writer-moment-body" : "")}>

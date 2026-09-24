@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-img-element -- Small local avatar needs no image optimization server. */
 import { profile } from "./content";
-import FeedLinks from "./components/feed-links";
 
 export default function Home() {
   return (
@@ -24,7 +23,6 @@ export default function Home() {
         <div><a href="/tech/">Engineering Notes</a><p className="section-description">Infrastructure, source-code reading, and notes from work.</p></div>
         <div><a href="/personal/">Personal</a><p className="section-description">Literature, film, and things that live in the imagination.</p></div>
       </nav>
-      <FeedLinks />
     </main>
   );
 }
