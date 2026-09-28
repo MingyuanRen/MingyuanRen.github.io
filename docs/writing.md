@@ -4,7 +4,7 @@ The online studio uses GitHub App sign-in with a persistent browser session.
 See [GitHub sign-in setup](github-sign-in.md) for hosting and security details.
 
 Open `/admin/`. The writing page uses the same typography, colors, and layout
-as the public site. It supports Markdown, a rendered preview, image uploads,
+as the public site. It supports a visual document editor backed by Markdown, a rendered preview, image uploads,
 drafts, existing-article editing, and automatic bilingual publication using OpenAI.
 You do not need to edit code or configure hosting each time you write.
 
@@ -56,7 +56,8 @@ Stop this service when you finish.
    is remembered for new articles. Notes and tier lists need a title; moments do not.
    Date, optional summary and URL name live under publication details.
    A URL name is generated on first save if left blank.
-3. Switch between **Write** and **Preview**. Raw HTML is displayed as text.
+3. Write directly in **Document**; use **Reader preview** to check the complete
+   article. Raw HTML is displayed as text, not executed.
 4. **Save to Drafts** saves only the version you are writing, without a translation call.
 5. **Publish locally** translates the current text and publishes both versions in
    the local preview. No prior save or separate Generate action is needed.
@@ -80,12 +81,43 @@ explicit Save collection button. The editor continues warning before leaving.
 The downloadable backup is marked as a draft regardless of the online version.
 Uploaded images are saved immediately; on GitHub this is a separate public commit.
 
+### Writing as a document
+
+The visual editor is used for article bodies, moments, tier-list introductions,
+the paragraph below the board, and each item's review. There is no need to switch
+between source and preview while composing ordinary text.
+
+- Select text for bold, italic, strikethrough, inline code, or a link.
+- Type `/` at the beginning of a paragraph for headings, lists, quotes, code,
+  a divider, or an image. Filter by typing (for example `/h2` or `/quote`), then
+  choose with arrow keys and Enter; Escape dismisses the menu.
+- Enter starts a paragraph; Shift+Enter inserts a line break within it. Markdown
+  shortcuts such as `## `, `> `, and `- ` also work as you type.
+- Paste or drop one image at the cursor, or use **Insert / format → Image**.
+  Local uploads stay local; online uploads still ask before creating a public
+  GitHub commit. Uploads are limited to JPG, PNG, GIF, or WebP under 5 MB. The
+  editor briefly locks while uploading so the insertion position stays correct.
+- Hover beside a paragraph to drag its handle. **Insert / format → Move block
+  ↑ / ↓** is a keyboard-accessible alternative. A list or quote moves as a unit.
+- Undo/Redo and the normal keyboard shortcuts work within the current editing
+  session, including across a visit to Reader preview. Opening another document
+  starts a fresh undo history.
+- Fold **Library & settings** to reduce distractions; use it to switch documents.
+
+The **Markdown** button is an escape hatch, not a required step. Saved content
+stays portable Markdown; editing can normalize equivalent syntax without
+changing its meaning. Existing tables open in Markdown source mode with a
+notice: table editing is not supported visually yet, and the original source is
+kept. Switch back using **Visual editor** only when the content is supported.
+Browser autosave is a recovery copy, not a remote draft or publication. Use
+**Save to Drafts** to save deliberately; translation still runs only on Publish.
+
 ### Line breaks, drafts, and deleting posts
 
-A single Enter now displays a line break in both Preview and reader pages.
-A blank line starts a new paragraph. Markdown headings, lists and code blocks
-still work. Existing saved articles retain their source line breaks automatically
-once this rendering update is deployed; soft visual wrapping in the text area
+In Markdown source mode, a single newline displays a line break in both preview
+and reader pages, and a blank line starts a new paragraph. In the visual editor,
+use Shift+Enter for a line break and Enter for a paragraph. Existing saved articles
+retain their source line breaks. Soft visual wrapping at the edge of the editor
 is not a stored line break.
 
 On an already published article, **Save as new draft** creates a separate draft
@@ -154,19 +186,11 @@ prevent overwriting a collection edited on another computer.
 
 ## Moments and tier lists
 
-### Exporting and reading
+### Reading images
 
-**Export PNG** below the tier board in the admin editor downloads a high-resolution
-image on your device. It is an author-only writing tool; published ranking pages
-and their previews do not show export controls. Select
-**Include reviews** to append the text below the board and each ranked film's
-name, tier and review. Markdown is converted to plain text; embedded review
-images are not exported. Unranked items are omitted. Export does not save,
-publish, upload, or call AI. A failed poster load stops export with an error,
-rather than silently leaving a blank. Very long reviews must be shortened or
-exported as the board alone. Long images may use a lower scale to stay within
-browser canvas limits. A download/open link remains available if the browser
-does not start the download automatically. TMDB images retain a credit footer.
+Rankings have no manual PNG export controls in the editor or reader pages.
+Publishing still creates the board image used in the article, with TMDB credits
+when needed. Commentary and reviews remain editable article text below the board.
 
 In **Picture**, click a frame to open the full-window viewer. Use the arrows,
 Left/Right keys or a horizontal swipe to move through the collection. **Close**
@@ -207,8 +231,7 @@ Boards support 40 posters (5 MB per image, 20 MB per upload batch).
 Drafts can keep unranked posters. Publishing requires every poster to have a name
 and a tier. The browser creates a PNG and uploads it before saving the article.
 Readers see the introduction, the finished PNG, then the film-by-film reasons;
-there are no public editing controls. A download button also exports the PNG
-without publishing.
+there are no public editing controls or manual image-export buttons.
 
 The Markdown frontmatter stores structured `ranking` data as well as the generated
 image URL. Reopening an article restores its layout, images, and reasons, so the
@@ -309,7 +332,7 @@ Implementation references: [OpenAI structured outputs](https://developers.openai
 
 New uploads use temporary in-memory image previews until the GitHub Pages build
 finishes. If you refresh immediately after upload, wait for deployment before
-exporting: saved image URLs may not be live yet. Image uploads and the generated
+publishing a ranking: saved image URLs may not be live yet. Image uploads and the generated
 PNG are separate commits; if the later article save fails (for example a revision
 conflict), an unreferenced image can remain in the public repository. Your current
 text remains in the editor for download/recovery.

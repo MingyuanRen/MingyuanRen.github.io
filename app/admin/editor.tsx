@@ -18,6 +18,7 @@ import { comparePosts } from "../../lib/post-order.mjs";
 import ImageLibrary, { type LibraryImage } from "./image-library";
 import BrowserBackups from "./browser-backups";
 import DisplayOrder from "./display-order";
+import DocumentEditor, { type DocumentEditorHandle } from "./document-editor";
 
 type Entry = { title: string; section: string; slug: string; language: string; date: string; description: string; body: string; draft: boolean; trashed?: boolean; format?: "moment"; ranking?: RankingData; pinned?: boolean; order?: number };
 type FileEntry = { path: string; sha: string; title?: string; language?: string; state?: string; images?: LibraryImage[]; pinned?: boolean; order?: number };
@@ -59,7 +60,7 @@ export default function Editor() {
   const [studioOrigin, setStudioOrigin] = useState("");
   const [sessionChecked, setSessionChecked] = useState(false);
   const [signInFailed, setSignInFailed] = useState(false);
-  const imageInput = useRef<HTMLInputElement>(null);
+  const bodyEditor = useRef<DocumentEditorHandle>(null);
   const feedback = useRef<HTMLDivElement>(null);
   const operation = useRef(false);
   const [preferredLanguage, setPreferredLanguage] = useState("zh");
@@ -266,7 +267,7 @@ export default function Editor() {
   }
   function reuseInBody(image: LibraryImage) {
     const credit = image.tmdbId ? `\n\n[Image source: TMDB](https://www.themoviedb.org/movie/${image.tmdbId})\n\n![TMDB](/tmdb.svg)\n\nThis product uses the TMDB API but is not endorsed or certified by TMDB.` : "";
-    update("body", entry.body + `\n\n![Image description](${image.image})${credit}\n`); setPreview(false);
+    bodyEditor.current?.insertMarkdown(`![Image description](${image.image})${credit}\n`);
   }
   async function saveDisplayOrder(value: { pinned: boolean; order?: number }) {
     if (!opened || dirty) return;
@@ -291,14 +292,12 @@ export default function Editor() {
     setRecentImages(current => [...current, { image: url, title: file.name, ...(tmdbId ? { tmdbId } : {}) }]);
     return url;
   }
-  async function upload(file: File) {
-    if (mode !== "local" && !window.confirm("Upload this image to the public GitHub repository now? This creates a commit, even if your article is still a draft.")) return;
-    await run(async () => {
-      const url = await uploadAsset(file);
-      setEntry(current => ({ ...current, body: current.body + "\n\n![Image description](" + url + ")\n" }));
-      setDirty(true); setPreview(false);
-      setNotice(mode === "local" ? "Image saved locally. Add a description in the Markdown." : "Image committed to GitHub. It appears after the next deployment.");
-    });
+  async function uploadDocumentImage(file: File) {
+    if (operation.current || busy) throw new Error("Wait for the current operation before uploading an image.");
+    if (mode !== "local" && !window.confirm("Upload this image to the public GitHub repository now? This creates a commit, even if your article is still a draft.")) return null;
+    operation.current = true; setBusy(true);
+    try { return await uploadAsset(file); }
+    finally { operation.current = false; setBusy(false); }
   }
   async function uploadPosters(selected: File[]) {
     if (!selected.length) return [];
@@ -361,7 +360,8 @@ export default function Editor() {
         href={mode === "session" ? "/auth/login" : studioOrigin ? studioOrigin + "/admin/" : undefined}
         checking={mode === "session" && !sessionChecked} failed={signInFailed} />
         : <p>{mode === "loading" ? "Opening your workspace…" : "Open this editor at localhost:3000 or mingyuanren.github.io."}</p>}
-    </section> : <>
+    </section> : <div className="writer-workspace">
+      <aside className="writer-sidebar"><details open><summary>Library & settings</summary>
       <div className="writer-categories" role="group" aria-label="Writing categories">
         {categories.map(category => <button key={category.id} aria-pressed={entry.section === category.id} disabled={busy} onClick={() => { if (entry.section !== category.id) newArticle(category.id); }}>
           {category.title}
@@ -372,7 +372,7 @@ export default function Editor() {
         if (!canLeave()) return;
         setEntry(snapshot.entry); setOpened(snapshot.opened); setDocumentKey(key => key + 1); setDirty(true); setPreview(false); setProgress(null); setConfirmation(null); setTrashConfirm(false); setSavedLink(""); setError(""); setNotice("Browser backup recovered. Save to Drafts when ready; nothing has been published.");
       }} />
-      {entry.section === "pictures" && galleryWriter ? <PictureEditor writer={galleryWriter} local={mode === "local"} imageSources={imageSources} onUpload={uploadAsset} onLoadImages={loadImages} onDirty={setDirty} onBusy={setBusy} /> : <>
+      {entry.section !== "pictures" && <>
       <div className="writer-library">
         <span>Library</span>
         <button disabled={busy} onClick={() => newArticle()}>New {entry.section === "essays" ? "moment" : entry.section === "rankings" ? "tier list" : "article"} +</button>
@@ -388,6 +388,10 @@ export default function Editor() {
             {file.title}<span>{file.language === "zh" ? "中文" : "English"}{file.pinned ? " · Pinned" : ""}{file.order !== undefined ? ` · #${file.order}` : ""}</span>
           </button>)}
       </div>
+      </>}
+      </details></aside>
+      <div className="writer-document" key={documentKey}>
+      {entry.section === "pictures" && galleryWriter ? <PictureEditor writer={galleryWriter} local={mode === "local"} imageSources={imageSources} onUpload={uploadAsset} onLoadImages={loadImages} onDirty={setDirty} onBusy={setBusy} /> : <>
       {opened && !entry.trashed && <DisplayOrder key={opened.path + opened.sha} pinned={entry.pinned} order={entry.order} disabled={busy || dirty} onSave={value => void saveDisplayOrder(value)} />}
       {entry.trashed ? <section className="writer-trashed" aria-label="Trashed article">
         <h2>{entry.title}</h2><p className="writer-help">This {entry.language === "zh" ? "中文" : "English"} version is in Trash and hidden from readers. Restore it to Drafts before editing or publishing.</p>
@@ -412,28 +416,24 @@ export default function Editor() {
           <button onClick={() => updateRanking({ version: 1, items: [] })}>Add a tier-list board</button>
         </div>}
         <div className="writer-editor-toolbar">
-          <div className="language-switch" aria-label="Editor view"><button aria-pressed={!preview} onClick={() => setPreview(false)}>Write</button><span>/</span><button aria-pressed={preview} onClick={() => setPreview(true)}>Preview</button></div>
-          {!entry.ranking && <button onClick={() => imageInput.current?.click()}>Add image</button>}
-          <input ref={imageInput} hidden type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }} />
+          <div className="language-switch" aria-label="Editor view"><button aria-pressed={!preview} onClick={() => setPreview(false)}>Document</button><span>/</span><button aria-pressed={preview} onClick={() => setPreview(true)}>Reader preview</button></div>
         </div>
-        {!entry.ranking && <ImageLibrary load={loadImages} onChoose={reuseInBody} disabled={busy} imageSources={imageSources} />}
-        {preview ? <article className="writer-preview">
+        {preview && <article className="writer-preview">
           {!moment && <h2>{entry.title || "Untitled"}</h2>}
           <div className="post-meta">{entry.language === "zh" ? "中文" : "English"}</div>
           {entry.body ? <div className="prose" dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.body) }} /> : <p className="writer-help">Your preview will appear here.</p>}
           {entry.ranking && <RankingArticle ranking={entry.ranking} preview imageSources={imageSources} language={entry.language} />}
-        </article> : <>
+        </article>}
+        <div hidden={preview}>
           {entry.ranking && <h2 className="writer-step"><span>01</span> Set the scene</h2>}
-          <label className={"writer-body-label" + (entry.ranking ? " writer-introduction" : moment ? " writer-moment-body" : "")}>
-            <span className={entry.ranking ? "writer-label" : "writer-sr-only"}>{entry.ranking ? "Introduction" : moment ? "Your moment" : "Markdown body"}</span>
-            <textarea value={entry.body} placeholder={entry.ranking ? "A few words before the ranking. What did you watch? What matters to you?" : moment ? "有些念头，一段就够了。" : "Start writing…\n\nMarkdown works here. 中文也可以。"} onChange={event => update("body", event.target.value)} />
-          </label>
+          <DocumentEditor ref={bodyEditor} value={entry.body} onChange={value => update("body", value)} label={entry.ranking ? "Introduction" : moment ? "Your moment" : "Article body"} placeholder={entry.ranking ? "A few words before the ranking…" : moment ? "有些念头，一段就够了。输入 / 插入内容。" : "Start writing, or type / for blocks…"} compact={!!entry.ranking} disabled={busy} onUpload={uploadDocumentImage} imageSources={imageSources} />
+          <details className="writer-details"><summary>Reuse an uploaded image</summary><ImageLibrary load={loadImages} onChoose={reuseInBody} disabled={busy} imageSources={imageSources} /></details>
           {entry.ranking && <>
             <h2 className="writer-step"><span>02</span> Make your ranking</h2>
-            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} onMovieRequest={movieRequest} onImport={importMovieImage} onLoadImages={loadImages} disabled={busy} imageSources={imageSources} title={entry.title} language={entry.language} />
+            <RankingEditor value={entry.ranking} onChange={updateRanking} onUpload={uploadPosters} onUploadTextImage={uploadDocumentImage} onMovieRequest={movieRequest} onImport={importMovieImage} onLoadImages={loadImages} disabled={busy} imageSources={imageSources} />
           </>}
-        </>}
-        {!entry.ranking && <p className="writer-help">{moment ? "No title needed. Write as little or as much as you like." : "# Heading · **bold** · [link](url) · code fences · lists · images"}</p>}
+        </div>
+        {!entry.ranking && <p className="writer-help">{moment ? "No title needed. Write as little or as much as you like." : "Type / for blocks · Select text to format · Paste or drop an image"}</p>}
         <div className="writer-actions">
           <button className="writer-primary" onClick={() => requestSave(false)}>{translating ? "Translating & publishing…" : mode === "local" ? "Publish locally" : "Publish"}</button>
           <button onClick={() => requestSave(true)}>{opened && !entry.draft ? "Save as new draft" : "Save to Drafts"}</button>
@@ -475,7 +475,7 @@ export default function Editor() {
           await writer.current?.logout?.(); writer.current?.disconnect(); writer.current = null; setGalleryWriter(null); setConnected(false); setEntry(blank()); setOpened(null); setDirty(false); setConfirmation(null); setNotice(""); setError(""); setSavedLink("");
         }); }}>{mode === "local" ? "Disconnect" : "Sign out"}</button>
       </div>
-    </>}
+    </div></div>}
     {!connected && error && <p className="writer-error" role="alert">{error}</p>}
     {savedLink && <p className="writer-result"><a href={savedLink} target="_blank" rel="noreferrer">View article ↗</a>{mode !== "local" && <> · <a href="https://github.com/MingyuanRen/MingyuanRen.github.io/actions" target="_blank" rel="noreferrer">Check deployment ↗</a></>}</p>}
   </main>;

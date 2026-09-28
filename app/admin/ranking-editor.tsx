@@ -7,22 +7,22 @@ import "../components/ranking-board.css";
 import "./ranking-editor.css";
 import MoviePicker, { type Movie, type MovieImage, type MovieRequest, type MovieResult } from "./movie-picker";
 import ImageLibrary, { type LibraryImage } from "./image-library";
-import RankingExport from "../components/ranking-export";
+import DocumentEditor from "./document-editor";
 
 export type { RankingData, RankingItem, TierId } from "../components/ranking-board";
 const CARD_TYPE = "application/x-mingyuan-ranking-card";
 const MAX_ITEMS = 40;
 
-export default function RankingEditor({ value, onChange, onUpload, onMovieRequest, onImport, onLoadImages, disabled = false, imageSources = {}, title = "", language = "en" }: {
+export default function RankingEditor({ value, onChange, onUpload, onUploadTextImage, onMovieRequest, onImport, onLoadImages, disabled = false, imageSources = {} }: {
   value: RankingData;
   onChange(value: RankingData): void;
   onUpload(files: File[]): Promise<Array<{ image: string; title: string }>>;
+  onUploadTextImage?(file: File): Promise<string | null>;
   onMovieRequest(input: MovieRequest): Promise<MovieResult>;
   onImport(movie: Movie, image: MovieImage): Promise<{ image: string; title: string } | null>;
   onLoadImages?(): Promise<{ images: LibraryImage[]; truncated?: boolean }>;
   disabled?: boolean;
   imageSources?: ImageSources;
-  title?: string; language?: string;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -145,13 +145,8 @@ export default function RankingEditor({ value, onChange, onUpload, onMovieReques
       </div>)}
     </div>
     {error && <p className="writer-error" role="alert">{error}</p>}
-    <RankingExport ranking={value} title={title} imageSources={imageSources} language={language} disabled={locked} />
     <p className="ranking-status writer-help" role="status">{status || (items.some(item => item.tier === null) ? "Assign every poster a tier before publishing." : "The finished ranking will appear between your introduction and reasons.")}</p>
-    <label className="writer-body-label ranking-commentary-input">
-      <span className="writer-sr-only">Text below the ranking</span>
-      <textarea aria-label="Text below the ranking" rows={4} maxLength={100000} value={value.commentary || ""} disabled={locked}
-        onChange={event => onChange({ ...value, commentary: event.target.value })} />
-    </label>
+    <DocumentEditor label="Text below the ranking" value={value.commentary || ""} onChange={commentary => onChange({ ...value, commentary })} disabled={locked} compact onUpload={onUploadTextImage} imageSources={imageSources} placeholder="Write below your ranking…" />
     {!items.length && <p className="writer-help">Upload a poster to start.</p>}
     <div className="ranking-reasons">
       {ordered.map(item => {
@@ -174,7 +169,7 @@ export default function RankingEditor({ value, onChange, onUpload, onMovieReques
               if (window.confirm(`Remove “${item.title || "Untitled film"}” and its reason from this ranking? The uploaded image file will be kept.`)) change(items.filter(candidate => candidate.id !== item.id));
             }}>Remove</button>
           </div>
-          <label className="writer-label">Description<textarea rows={4} maxLength={10000} value={item.reason} onChange={event => updateItem(item.id, { reason: event.target.value })} /></label>
+          <DocumentEditor label={`Description for ${item.title || "untitled film"}`} value={item.reason} onChange={reason => updateItem(item.id, { reason })} disabled={locked} compact onUpload={onUploadTextImage} imageSources={imageSources} placeholder="Your thoughts on this film…" />
         </fieldset>;
       })}
     </div>
