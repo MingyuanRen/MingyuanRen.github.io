@@ -102,7 +102,11 @@ between source and preview while composing ordinary text.
 - Undo/Redo and the normal keyboard shortcuts work within the current editing
   session, including across a visit to Reader preview. Opening another document
   starts a fresh undo history.
-- Fold **Library & settings** to reduce distractions; use it to switch documents.
+- Use the arrow button beside **Library & settings** to collapse or expand the
+  library. On desktop, it folds into a narrow rail and gives its width to your
+  document. On small screens, the collapsed library leaves the full writing width
+  available. Your text, undo history, library state, and browser autosave remain
+  intact while the library is hidden.
 
 The **Markdown** button is an escape hatch, not a required step. Saved content
 stays portable Markdown; editing can normalize equivalent syntax without

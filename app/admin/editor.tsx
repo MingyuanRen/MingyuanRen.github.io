@@ -19,6 +19,7 @@ import ImageLibrary, { type LibraryImage } from "./image-library";
 import BrowserBackups from "./browser-backups";
 import DisplayOrder from "./display-order";
 import DocumentEditor, { type DocumentEditorHandle } from "./document-editor";
+import WritingWorkspace from "./writing-workspace";
 
 type Entry = { title: string; section: string; slug: string; language: string; date: string; description: string; body: string; draft: boolean; trashed?: boolean; format?: "moment"; ranking?: RankingData; pinned?: boolean; order?: number };
 type FileEntry = { path: string; sha: string; title?: string; language?: string; state?: string; images?: LibraryImage[]; pinned?: boolean; order?: number };
@@ -344,7 +345,7 @@ export default function Editor() {
     setDirty(true); setSavedLink(""); setConfirmation(null);
   }
 
-  return <main className="page writer-page">
+  return <main className={`page writer-page${connected ? " is-connected" : ""}`}>
     <div className="page-toolbar">
       <a className="back-link" href={mode === "session" ? "https://mingyuanren.github.io/" : "/"} onClick={event => { if (!canLeave()) event.preventDefault(); }}>← Mingyuan Ren</a>
       <span className="writer-eyebrow">{mode === "local" ? "LOCAL PREVIEW" : "WRITING"}</span>
@@ -360,8 +361,7 @@ export default function Editor() {
         href={mode === "session" ? "/auth/login" : studioOrigin ? studioOrigin + "/admin/" : undefined}
         checking={mode === "session" && !sessionChecked} failed={signInFailed} />
         : <p>{mode === "loading" ? "Opening your workspace…" : "Open this editor at localhost:3000 or mingyuanren.github.io."}</p>}
-    </section> : <div className="writer-workspace">
-      <aside className="writer-sidebar"><details open><summary>Library & settings</summary>
+    </section> : <WritingWorkspace library={<>
       <div className="writer-categories" role="group" aria-label="Writing categories">
         {categories.map(category => <button key={category.id} aria-pressed={entry.section === category.id} disabled={busy} onClick={() => { if (entry.section !== category.id) newArticle(category.id); }}>
           {category.title}
@@ -389,7 +389,7 @@ export default function Editor() {
           </button>)}
       </div>
       </>}
-      </details></aside>
+      </>}>
       <div className="writer-document" key={documentKey}>
       {entry.section === "pictures" && galleryWriter ? <PictureEditor writer={galleryWriter} local={mode === "local"} imageSources={imageSources} onUpload={uploadAsset} onLoadImages={loadImages} onDirty={setDirty} onBusy={setBusy} /> : <>
       {opened && !entry.trashed && <DisplayOrder key={opened.path + opened.sha} pinned={entry.pinned} order={entry.order} disabled={busy || dirty} onSave={value => void saveDisplayOrder(value)} />}
@@ -475,7 +475,7 @@ export default function Editor() {
           await writer.current?.logout?.(); writer.current?.disconnect(); writer.current = null; setGalleryWriter(null); setConnected(false); setEntry(blank()); setOpened(null); setDirty(false); setConfirmation(null); setNotice(""); setError(""); setSavedLink("");
         }); }}>{mode === "local" ? "Disconnect" : "Sign out"}</button>
       </div>
-    </div></div>}
+    </div></WritingWorkspace>}
     {!connected && error && <p className="writer-error" role="alert">{error}</p>}
     {savedLink && <p className="writer-result"><a href={savedLink} target="_blank" rel="noreferrer">View article ↗</a>{mode !== "local" && <> · <a href="https://github.com/MingyuanRen/MingyuanRen.github.io/actions" target="_blank" rel="noreferrer">Check deployment ↗</a></>}</p>}
   </main>;
