@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writingServer } from "../build/writing-server.mjs";
@@ -29,7 +29,11 @@ async function localFixture(t, translator = translate) {
 
 test("publish translates unsaved content and publishes both versions in one author action", async t => {
   let calls = 0;
-  const { root, request } = await localFixture(t, async (...args) => { calls++; return translate(...args); });
+  const { root, request } = await localFixture(t, async (...args) => {
+    calls++;
+    const translated = await translate(...args);
+    return serializeEntry({ ...readEntry(translated.source, translated.path), body: `Translation ${calls}` }, true);
+  });
   const response = await request(original);
   assert.equal(response.status, 200);
   const result = await response.json();
@@ -40,10 +44,23 @@ test("publish translates unsaved content and publishes both versions in one auth
     assert.equal(readFileSync(join(root, file.path), "utf8"), file.source);
   }
   const source = result.files.find(file => file.path === original.path);
-  const updated = serializeEntry({ ...entry, body: "新内容。" }, false);
-  assert.equal((await request({ ...updated, sha: source.sha })).status, 200);
+  const updated = serializeEntry({ ...entry, title: "持续更新的日落", body: "新内容。" }, false);
+  const updateResponse = await request({ ...updated, sha: source.sha });
+  assert.equal(updateResponse.status, 200);
+  const update = await updateResponse.json();
   assert.equal(calls, 2);
-  assert.match(readFileSync(join(root, original.path), "utf8"), /新内容/);
+  assert.deepEqual(update.files.map(file => file.path).sort(), result.files.map(file => file.path).sort());
+  assert.deepEqual(readdirSync(join(root, "content/essays")).sort(), ["bilingual.en.md", "bilingual.zh.md"]);
+  for (const file of update.files) {
+    const saved = readEntry(readFileSync(join(root, file.path), "utf8"), file.path);
+    assert.equal(saved.slug, entry.slug);
+    assert.equal(saved.date, entry.date);
+    assert.equal(saved.draft, false);
+    assert.equal(saved.body.trim(), saved.language === "zh" ? "新内容。" : "Translation 2");
+  }
+  assert.equal(readEntry(update.files.find(file => file.path === original.path).source, original.path).title, "持续更新的日落");
+  assert.equal((await request({ ...updated, sha: source.sha })).status, 409);
+  assert.equal(calls, 2, "an old revision cannot trigger another translation or overwrite the update");
 });
 
 test("translation failure preserves published originals and returns a visible error, not partial success", async t => {
@@ -120,16 +137,26 @@ test("English-first writing requests Chinese translation and preserves its origi
   assert.equal(readEntry(output.source, output.path).language, "zh");
 });
 
-test("GitHub publication adds both language files in a single non-force commit", async () => {
+test("GitHub publication updates existing language files in a single non-force commit", async () => {
   const head = "a".repeat(40); const commit = "b".repeat(40);
+  const sha = "c".repeat(40), targetSha = "d".repeat(40);
+  const updated = serializeEntry({ ...entry, title: "持续更新的日落", body: "新内容。" }, false);
+  const previousTranslation = await translate(original.source, original.path);
   const writes = [];
-  const result = await publishGithub({ ...original, token: "test", translator: translate, fetcher: async (url, options) => {
+  const result = await publishGithub({ ...updated, sha, targetSha, token: "test", translator: translate, fetcher: async (url, options) => {
     assert.ok(url.startsWith("https://api.github.com/repos/MingyuanRen/MingyuanRen.github.io/"));
     if (options.method !== "GET") {
       const body = JSON.parse(options.body); writes.push({ url, body });
       if (url.endsWith("/git/trees")) {
         assert.equal(body.tree.length, 2);
-        for (const file of body.tree) assert.equal(readEntry(file.content, file.path).draft, false);
+        assert.deepEqual(body.tree.map(file => file.path).sort(), [original.path, previousTranslation.path].sort());
+        for (const file of body.tree) {
+          const saved = readEntry(file.content, file.path);
+          assert.equal(saved.draft, false);
+          assert.equal(saved.slug, entry.slug);
+          assert.equal(saved.date, entry.date);
+        }
+        assert.equal(readEntry(body.tree.find(file => file.path === original.path).content, original.path).body.trim(), "新内容。");
         return json({ sha: "tree-sha" });
       }
       if (url.endsWith("/git/commits")) { assert.deepEqual(body.parents, [head]); return json({ sha: commit }); }
@@ -137,6 +164,10 @@ test("GitHub publication adds both language files in a single non-force commit",
     }
     if (url.endsWith("/git/ref/heads/main")) return json({ object: { sha: head } });
     if (url.includes("/git/commits/")) return json({ tree: { sha: "old-tree" } });
+    if (url.includes("/contents/")) {
+      const english = url.includes(".en.md");
+      return json({ type: "file", encoding: "base64", content: encodedText(english ? previousTranslation.source : original.source), sha: english ? targetSha : sha });
+    }
     return json({}, 404);
   } });
   assert.equal(result.commit, commit);

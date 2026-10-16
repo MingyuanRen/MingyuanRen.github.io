@@ -89,6 +89,8 @@ export default function Editor() {
   const visibleFiles = categoryFiles.filter(file => file.state === shelf).sort(comparePosts);
   const sibling = opened ? files.find(file => file.path === otherLanguagePath(opened.path) && file.state !== "trash") : undefined;
   const moment = entry.format === "moment";
+  const editingPublished = !!opened && !entry.draft && !entry.trashed;
+  const articleUrl = entry.slug ? `${mode === "session" ? "https://mingyuanren.github.io" : ""}/posts/${entry.section}/${encodeURIComponent(entry.slug)}/${entry.language}/` : "";
 
   useEffect(() => {
     let active = true;
@@ -104,6 +106,7 @@ export default function Editor() {
     next.connect().then(() => loadLibrary(next)).then(items => {
       if (!active) { next.disconnect(); return; }
       writer.current = next; setGalleryWriter(next); setFiles(items); setConnected(true);
+      setShelf(items.some(file => file.path.startsWith("content/engineering/") && file.state === "published") ? "published" : "drafts");
       let language = "zh";
       try { language = localStorage.getItem("writing-language") === "en" ? "en" : "zh"; } catch { /* Use Chinese by default. */ }
       setPreferredLanguage(language); setEntry(current => ({ ...current, language, date: current.date || blank().date }));
@@ -146,6 +149,7 @@ export default function Editor() {
         await next.connect();
         const items = await loadLibrary(next);
         writer.current = next; setGalleryWriter(next); setFiles(items); setConnected(true);
+        setShelf(items.some(file => file.path.startsWith(`content/${entry.section}/`) && file.state === "published") ? "published" : "drafts");
         let language = preferredLanguage;
         try { language = localStorage.getItem("writing-language") === "en" ? "en" : "zh"; } catch { /* Keep the in-memory choice. */ }
         setPreferredLanguage(language);
@@ -166,6 +170,7 @@ export default function Editor() {
     if (!canLeave()) return;
     setDocumentKey(key => key + 1); setProgress(null);
     setTrashConfirm(false);
+    setShelf(section !== entry.section && files.some(file => file.path.startsWith(`content/${section}/`) && file.state === "published") ? "published" : "drafts");
     setEntry(blank(section, preferredLanguage)); setOpened(null); setDirty(false); setPreview(false); setNotice(""); setError(""); setSavedLink(""); setConfirmation(null);
   }
   async function openArticle(path: string) {
@@ -174,6 +179,7 @@ export default function Editor() {
       const file = await writer.current!.read(path);
       const loaded = readEntry(file.source, path) as Entry;
       setEntry(loaded); setTrashConfirm(false);
+      setShelf(loaded.trashed ? "trash" : loaded.draft ? "drafts" : "published");
       setDocumentKey(key => key + 1); setProgress(null);
       setFiles(current => current.map(item => item.path === path ? describeFile(path, file.source, file.sha) : item));
       setOpened({ path, sha: file.sha }); setDirty(false); setPreview(false); setSavedLink(""); setConfirmation(null);
@@ -181,7 +187,7 @@ export default function Editor() {
   }
   async function save(draft: boolean) {
     setConfirmation(null);
-    setProgress(draft ? null : { stage: "preparing", label: "Preparing your article…" });
+    setProgress(draft ? null : { stage: "preparing", label: editingPublished ? "Preparing your update…" : "Preparing your article…" });
     await run(async () => {
       const copy = draft && !!opened && !entry.draft;
       let saving = withUrlName(copy ? { ...entry, slug: "", draft: true } : entry);
@@ -218,8 +224,10 @@ export default function Editor() {
         setEntry(readEntry(original.source, path) as Entry); setOpened({ path, sha: original.sha }); setDirty(false);
         setFiles(current => [...current.filter(file => !result.files.some(saved => saved.path === file.path)), ...result.files.map(({ path, source, sha }) => describeFile(path, source, sha))]);
         setShelf("published");
-        setNotice(mode === "local" ? "Published in 中文 and English locally. No GitHub commit or deployment." : "Published in 中文 and English. Both versions are ready to read.");
-        setSavedLink("/posts/" + saving.section + "/" + encodeURIComponent(saving.slug) + "/" + saving.language + "/");
+        setNotice(editingPublished
+          ? mode === "local" ? "Article updated in 中文 and English locally, at the same URL." : "Article updated in 中文 and English, at the same URL."
+          : mode === "local" ? "Published in 中文 and English locally. No GitHub commit or deployment." : "Published in 中文 and English. Both versions are ready to read.");
+        setSavedLink(`${mode === "session" ? "https://mingyuanren.github.io" : ""}/posts/${saving.section}/${encodeURIComponent(saving.slug)}/${saving.language}/`);
       } finally { setTranslating(false); }
     });
   }
@@ -383,6 +391,7 @@ export default function Editor() {
         <button disabled={busy} onClick={() => void run(async () => setFiles(await loadLibrary(writer.current!)))}>Refresh list</button>
       </div>
       <div className="writer-file-list" aria-label="Saved articles">
+        {shelf === "published" && visibleFiles.length > 0 && <p className="writer-help">Choose an article to edit and update it at the same URL.</p>}
         {!visibleFiles.length ? <p className="writer-help">{shelf === "drafts" ? "No drafts yet. Write below and save to Drafts." : "Nothing here yet."}</p> : visibleFiles.map(file =>
           <button key={file.path} disabled={busy} aria-current={opened?.path === file.path ? "true" : undefined} onClick={() => void openArticle(file.path)}>
             {file.title}<span>{file.language === "zh" ? "中文" : "English"}{file.pinned ? " · Pinned" : ""}{file.order !== undefined ? ` · #${file.order}` : ""}</span>
@@ -400,6 +409,10 @@ export default function Editor() {
         <button className="writer-primary" disabled={busy} onClick={() => void changeTrash(false)}>Restore to Drafts</button>
         <button disabled={busy} onClick={download}>Download .md</button>
       </section> : <>
+      {editingPublished && <div className="writer-editing-published">
+        <span>Editing published article</span>
+        <a href={articleUrl} target="_blank" rel="noreferrer">View current version ↗</a>
+      </div>}
       <fieldset className="writer-form" disabled={busy}>
         <label className="writer-label writer-language">I write in<select value={entry.language} disabled={!!opened} onChange={event => update("language", event.target.value)}><option value="zh">中文</option><option value="en">English</option></select></label>
         {!moment && <label className="writer-label writer-title-label">Title<input className="writer-title" value={entry.title} placeholder={entry.ranking ? "What are we ranking?" : "Untitled"} onChange={event => update("title", event.target.value)} /></label>}
@@ -435,13 +448,13 @@ export default function Editor() {
         </div>
         {!entry.ranking && <p className="writer-help">{moment ? "No title needed. Write as little or as much as you like." : "Type / for blocks · Select text to format · Paste or drop an image"}</p>}
         <div className="writer-actions">
-          <button className="writer-primary" onClick={() => requestSave(false)}>{translating ? "Translating & publishing…" : mode === "local" ? "Publish locally" : "Publish"}</button>
+          <button className="writer-primary" disabled={editingPublished && !dirty} onClick={() => requestSave(false)}>{translating ? editingPublished ? "Updating both versions…" : "Translating & publishing…" : editingPublished ? mode === "local" ? "Update locally" : "Update article" : mode === "local" ? "Publish locally" : "Publish"}</button>
           <button onClick={() => requestSave(true)}>{opened && !entry.draft ? "Save as new draft" : "Save to Drafts"}</button>
           <button onClick={download}>Download .md</button>
           {opened && <button onClick={() => { setTrashConfirm(true); setTrashBoth(true); setConfirmation(null); }}>Delete…</button>}
-          <span className="writer-help" role="status">{translating ? "Creating both versions. Please keep this tab open." : busy ? "Saving…" : dirty ? "Unsaved changes" : opened ? entry.draft ? "Draft" : "Published" : ""}</span>
+          <span className="writer-help" role="status">{translating ? "Creating both versions. Please keep this tab open." : busy ? "Saving…" : dirty ? editingPublished ? "Unpublished changes" : "Unsaved changes" : opened ? entry.draft ? "Draft" : "Published" : ""}</span>
         </div>
-        <p className="writer-help">Publish sends your text to OpenAI (GPT-5.6) and uses API credits to publish both 中文 and English. Republishing regenerates the other language, replacing its previous wording. Save draft does not translate.</p>
+        <p className="writer-help">{editingPublished ? "Update article replaces this article at the same URL and regenerates the other language. Save as new draft makes a separate article with a new URL." : "Publish creates both 中文 and English versions."} Translation uses OpenAI API credits. Saving a draft does not translate.</p>
       </fieldset>
       </>}
       <div ref={feedback}>
@@ -459,8 +472,8 @@ export default function Editor() {
         <button disabled={busy} onClick={() => setTrashConfirm(false)}>Cancel</button>
       </section>}
       {confirmation && <section className="writer-confirm" aria-label="Confirm GitHub commit">
-        <p>{confirmation === "draft" ? "Save this draft to the public GitHub repository? It will not appear on the website, but its source and history will be public." : "Translate and publish both versions? Your text is sent to OpenAI using API credits. The other language version will be regenerated. Both versions, uploaded images and Git history are public. Nothing is published if translation fails; uploaded images may remain."}</p>
-        <button className="writer-primary" disabled={busy} onClick={() => void save(confirmation === "draft")}>Confirm {confirmation === "draft" ? "draft save" : "publish"}</button>
+        <p>{confirmation === "draft" ? "Save this draft to the public GitHub repository? It will not appear on the website, but its source and history will be public." : editingPublished ? "Update this article at its existing URL? The other language version will be regenerated using OpenAI API credits. Your current published text stays live until the update succeeds." : "Translate and publish both versions? Your text is sent to OpenAI using API credits. The other language version will be regenerated. Both versions, uploaded images and Git history are public. Nothing is published if translation fails; uploaded images may remain."}</p>
+        <button className="writer-primary" disabled={busy} onClick={() => void save(confirmation === "draft")}>Confirm {confirmation === "draft" ? "draft save" : editingPublished ? "update" : "publish"}</button>
         <button disabled={busy} onClick={() => setConfirmation(null)}>Cancel</button>
       </section>}
       <details className="writer-setup"><summary>Translation setup</summary>

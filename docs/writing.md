@@ -124,6 +124,19 @@ use Shift+Enter for a line break and Enter for a paragraph. Existing saved artic
 retain their source line breaks. Soft visual wrapping at the edge of the editor
 is not a stored line break.
 
+### Updating an existing article
+
+Choose its category, open **Published**, and select the article in the language
+you want to write. Edit the document, check **Reader preview**, then choose
+**Update article** (or **Update locally** in local mode). Online, confirm the
+update when prompted. Both language versions are updated at their existing URLs;
+the title can change without changing the URL. The original publication date,
+pin, and display order are kept unless you edit them. The other language is
+regenerated from your new text. If translation fails, the published versions
+stay unchanged and your edits remain in the editor. Stale revisions cannot
+overwrite an update made elsewhere: reopen the latest version before retrying.
+**View current version** opens the article readers currently see.
+
 On an already published article, **Save as new draft** creates a separate draft
 with a new URL name, leaving the published original unchanged. Publishing that
 copy creates a new article; reopen the original under Published to update it.
